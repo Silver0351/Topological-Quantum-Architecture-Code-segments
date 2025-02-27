@@ -1,0 +1,58 @@
+import os
+import requests
+
+def download_new_version(version):
+    """
+    Download a specific version of the glossary video from a URL.
+
+    :param version: The version number of the glossary video (e.g., '2.1').
+    :return: True if download is successful, False otherwise.
+    """
+    url = f"http://example.com/glossaries/glossary_{version}.mp4"
+    try:
+        response = requests.get(url, stream=True)
+        if response.status_code == 200:
+            with open(f"glossary_{version}.mp4", 'wb') as f:
+                for chunk in response.iter_content(chunk_size=8192):
+                    f.write(chunk)
+            return True
+        else:
+            print(f"Failed to download {url} (Status code: {response.status_code})")
+            return False
+    except requests.RequestException as e:
+        print(f"Error downloading {url}: {e}")
+        return False
+
+def select_glossary_for_operation(operation_type):
+    """
+    Select the appropriate glossary video based on the operation type.
+    Download the video if it doesn't exist locally.
+
+    :param operation_type: The type of operation (e.g., 'probabilistic', 'permutation').
+    :return: The filename of the selected glossary video.
+    """
+    if operation_type == 'probabilistic':
+        version = "2.1"
+    elif operation_type == 'permutation':
+        version = "3.0"
+    else:
+        version = "1.0"
+    
+    filename = f"glossary_{version}.mp4"
+    
+    # Check if the file exists locally
+    if not os.path.exists(filename):
+        print(f"{filename} not found locally. Attempting to download...")
+        if download_new_version(version):
+            print(f"Successfully downloaded {filename}")
+        else:
+            print(f"Failed to download {filename}. Using default glossary.")
+            filename = "glossary_1.0.mp4"  # Fallback to default
+    
+    return filename
+
+# Example usage
+if __name__ == "__main__":
+    operation = "probabilistic"
+    glossary_file = select_glossary_for_operation(operation)
+    print(f"Selected glossary for '{operation}': {glossary_file}")

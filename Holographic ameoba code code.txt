@@ -1,0 +1,130 @@
+import numpy as np
+import matplotlib.pyplot as plt
+from mpl_toolkits.mplot3d import Axes3D
+
+class CymaticDataNetwork:
+    def __init__(self):
+        """Initialize the CymaticDataNetwork with mappings for data and sound."""
+        self.data_to_sound = {}  # Maps data (as tuple) to sine waves
+        self.sound_to_data = {}  # Maps sine waves (as tuple) to data
+
+    def encode_data(self, data):
+        """
+        Encode numerical data into sine waves.
+        
+        Args:
+            data (np.ndarray): Array of numerical values to encode.
+        Returns:
+            list: List of sine wave arrays.
+        """
+        frequencies = np.linspace(20, 20000, len(data))  # Human audible range
+        amplitudes = data / np.max(np.abs(data))  # Normalize to [-1, 1]
+        phases = np.random.uniform(0, 2 * np.pi, len(data))  # Random phases
+        time = np.linspace(0, 1, 1000)  # 1-second duration
+        sine_waves = [amplitudes[i] * np.sin(2 * np.pi * frequencies[i] * time + phases[i])
+                      for i in range(len(data))]
+        
+        # Store mappings using tuples for hashability
+        data_tuple = tuple(data)
+        sine_waves_tuple = tuple(map(tuple, sine_waves))
+        self.data_to_sound[data_tuple] = sine_waves_tuple
+        self.sound_to_data[sine_waves_tuple] = data_tuple
+        return sine_waves
+
+    def simulate_ferrofluid_response(self, sine_waves):
+        """
+        Simulate ferrofluid response to sound waves.
+        
+        Args:
+            sine_waves (list): List of sine wave arrays.
+        Returns:
+            np.ndarray: 1D array representing the ferrofluid pattern.
+        """
+        pattern = np.mean(np.abs(np.array(sine_waves)), axis=0)
+        return pattern
+
+    def decode_data_from_shape(self, shape):
+        """
+        Decode data from the ferrofluid shape (simplified placeholder).
+        
+        Args:
+            shape (np.ndarray): 1D array of the ferrofluid pattern.
+        Returns:
+            np.ndarray: Reconstructed data.
+        """
+        # Simplified: returns mean of shape repeated to match original data length
+        return np.array([np.mean(shape)] * 10)  # Assumes original data length of 10
+
+    def transmit_audio_frames(self, sine_waves, frame_rate=30):
+        """
+        Split sine waves into frames for transmission.
+        
+        Args:
+            sine_waves (list): List of sine wave arrays.
+            frame_rate (int): Number of frames per second.
+        Returns:
+            list: List of frames, each a segment of the sine waves.
+        """
+        frame_length = len(sine_waves[0]) // frame_rate
+        frames = []
+        for i in range(0, len(sine_waves[0]), frame_length):
+            frame = [wave[i:i + frame_length] for wave in sine_waves]
+            frames.append(frame)
+        return frames
+
+    def process_frames(self, frames):
+        """
+        Process frames with simulated error correction.
+        
+        Args:
+            frames (list): List of frame segments.
+        Returns:
+            list: List of corrected frames.
+        """
+        corrected_frames = []
+        for frame in frames:
+            if np.random.random() < 0.2:  # 20% chance of corruption
+                corrected_frames.append(np.zeros_like(frame[0]))
+            else:
+                corrected_frames.append(frame[0])  # Use first wave
+        return corrected_frames
+
+    def reconstruct_data(self, corrected_frames):
+        """
+        Reconstruct data from corrected frames.
+        
+        Args:
+            corrected_frames (list): List of processed frame segments.
+        Returns:
+            np.ndarray: Reconstructed data.
+        """
+        full_wave = np.concatenate(corrected_frames)
+        return self.decode_data_from_shape(full_wave)
+
+    def visualize_ferrofluid_shape(self, pattern):
+        """
+        Visualize the ferrofluid pattern in 3D.
+        
+        Args:
+            pattern (np.ndarray): 1D array of the ferrofluid pattern.
+        """
+        fig = plt.figure()
+        ax = fig.add_subplot(111, projection='3d')
+        x = np.linspace(0, len(pattern), 100)
+        y = np.sin(x)
+        z = pattern[:100]  # Match length to x and y
+        ax.plot(x, y, z)
+        plt.show()
+
+# Example usage
+if __name__ == "__main__":
+    network = CymaticDataNetwork()
+    data = np.random.rand(10)  # Random data array
+    sine_waves = network.encode_data(data)
+    ferro_pattern = network.simulate_ferrofluid_response(sine_waves)
+    network.visualize_ferrofluid_shape(ferro_pattern)
+    frames = network.transmit_audio_frames(sine_waves)
+    processed_frames = network.process_frames(frames)
+    decoded_data = network.reconstruct_data(processed_frames)
+    print("Original Data:", data)
+    print("Decoded Data:", decoded_data)

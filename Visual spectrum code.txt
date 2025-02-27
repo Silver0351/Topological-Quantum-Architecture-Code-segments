@@ -1,0 +1,89 @@
+import numpy as np
+import matplotlib.pyplot as plt
+from mpl_toolkits.mplot3d import Axes3D
+
+class LightMatrix:
+    def __init__(self, size=36, data=None):
+        """
+        Initialize the LightMatrix with a 3D size and optional data.
+
+        Args:
+            size (int): Dimensions of the 3D matrix (size x size x size).
+            data (np.ndarray): Optional 3D array of values (0 to 1) to encode. Defaults to random.
+        """
+        self.size = size
+        # Use provided data or generate random values if none
+        self.data = data if data is not None else np.random.rand(size, size, size)
+        self.light_points = self._generate_light_points()
+        self.color_map = plt.get_cmap('viridis')  # Colormap for encoding values
+
+    def _generate_light_points(self):
+        """
+        Generate 3D points using a Lissajous curve to highlight data paths.
+
+        Returns:
+            np.ndarray: Array of (x, y, z) integer coordinates within the matrix.
+        """
+        t = np.linspace(0, 2 * np.pi, self.size)
+        x = np.sin(t)
+        y = np.sin(2 * t)
+        z = np.sin(3 * t)
+        # Scale and shift points to fit within matrix bounds
+        points = np.column_stack((x, y, z)) * (self.size // 2) + (self.size // 2)
+        return points.astype(int)  # Ensure integer coordinates
+
+    def encode_light_properties(self, value):
+        """
+        Encode a data value into light properties: color, brightness, saturation.
+
+        Args:
+            value (float): Data value between 0 and 1.
+
+        Returns:
+            tuple: (color (RGB tuple), brightness (float), saturation (float))
+        """
+        color = self.color_map(value)[:3]  # RGB from colormap (ignoring alpha)
+        brightness = value  # Scale brightness with value (0 to 1)
+        saturation = 1.0  # Fixed saturation (could be parameterized)
+        return color, brightness, saturation
+
+    def visualize(self):
+        """
+        Visualize the 3D matrix with encoded light properties and highlighted points.
+        """
+        fig = plt.figure(figsize=(8, 8))
+        ax = fig.add_subplot(111, projection='3d')
+
+        # Plot all matrix points with encoded light properties
+        for x in range(self.size):
+            for y in range(self.size):
+                for z in range(self.size):
+                    value = self.data[x, y, z]
+                    color, brightness, _ = self.encode_light_properties(value)
+                    # Adjust color by brightness
+                    adjusted_color = tuple(c * brightness for c in color)
+                    ax.scatter(x, y, z, color=adjusted_color, s=10, alpha=0.5)
+
+        # Overlay light points with a distinct marker
+        for point in self.light_points:
+            x, y, z = point
+            if 0 <= x < self.size and 0 <= y < self.size and 0 <= z < self.size:
+                ax.scatter(x, y, z, c='yellow', s=50, marker='*', edgecolors='black')
+
+        # Set axis limits and labels
+        ax.set_xlim([0, self.size])
+        ax.set_ylim([0, self.size])
+        ax.set_zlim([0, self.size])
+        ax.set_xlabel('X')
+        ax.set_ylabel('Y')
+        ax.set_zlabel('Z')
+        ax.set_title('Light Matrix Visualization')
+        plt.show()
+
+# Example usage
+if __name__ == "__main__":
+    # Create a sample gradient data matrix
+    size = 10
+    data = np.linspace(0, 1, size**3).reshape(size, size, size)
+    light_matrix = LightMatrix(size=size, data=data)
+    light_matrix.visualize()

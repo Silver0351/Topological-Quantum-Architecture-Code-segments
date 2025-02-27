@@ -1,0 +1,57 @@
+import numpy as np
+from scipy.spatial import Voronoi, voronoi_plot_2d
+import matplotlib.pyplot as plt
+
+def generate_fibonacci_spiral(n_points, radius=1.0):
+    """
+    Generate points in a 2D space using a Fibonacci spiral for even distribution.
+
+    Args:
+        n_points (int): Number of points to generate.
+        radius (float): Scaling factor for the spiral's radius.
+
+    Returns:
+        np.ndarray: Array of shape (n_points, 2) containing (x, y) coordinates.
+    """
+    indices = np.arange(0, n_points, dtype=float) + 0.5
+    r = np.sqrt(indices / n_points) * radius
+    theta = np.pi * (1 + 5**0.5) * indices  # Golden angle in radians
+    x = r * np.cos(theta)
+    y = r * np.sin(theta)
+    return np.column_stack((x, y))
+
+def create_voronoi_tiling(points):
+    """
+    Create a Voronoi diagram from a set of 2D points.
+
+    Args:
+        points (np.ndarray): Array of shape (n_points, 2) with point coordinates.
+
+    Returns:
+        Voronoi: A SciPy Voronoi object representing the tiling.
+    """
+    if points.shape[1] != 2:
+        raise ValueError("Points must be 2D for Voronoi tiling.")
+    return Voronoi(points)
+
+def visualize_voronoi(vor):
+    """
+    Visualize the Voronoi diagram using Matplotlib.
+
+    Args:
+        vor (Voronoi): The Voronoi object to plot.
+    """
+    voronoi_plot_2d(vor)
+    plt.title("Fibonacci Spiral Voronoi Tiling")
+    plt.xlabel("X-axis")
+    plt.ylabel("Y-axis")
+    plt.show()
+
+# Example usage
+if __name__ == "__main__":
+    # Generate 100 points in a Fibonacci spiral
+    points = generate_fibonacci_spiral(n_points=100, radius=10)
+    # Create Voronoi tiling
+    vor = create_voronoi_tiling(points)
+    # Visualize the tiling
+    visualize_voronoi(vor)

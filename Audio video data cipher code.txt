@@ -1,0 +1,103 @@
+import numpy as np
+
+class DancingFlubberDataSystem:
+    def __init__(self):
+        # Define mappings for shapes and moves (visual encoding)
+        self.shapes = {'ball': 0, 'flat': 1, 'spike': 2}
+        self.moves = {'bounce': 0, 'roll': 1, 'spin': 2}
+        # Define audio codes for high and low pitch (audio encoding)
+        self.audio_codes = {'high_pitch': '1', 'low_pitch': '0'}
+        # Simulated storage for encoded data
+        self.simulated_video = []
+        self.simulated_audio = []
+
+    def encode_data(self, data, video_path, audio_path):
+        """
+        Encode input data into simulated visual and audio components.
+        Returns filenames as placeholders for real files.
+        """
+        visual_data = self._encode_visual(data)
+        audio_data = self._encode_audio(data)
+        self.simulated_video = visual_data
+        self.simulated_audio = audio_data
+        print(f"Encoding {len(data)} bytes into Flubber's dance and music.")
+        return "encoded_flubber_video.mp4", "encoded_flubber_audio.wav"
+
+    def _encode_visual(self, data):
+        """
+        Encode each byte into a shape and move using the first 4 bits.
+        Returns a list of (shape, move) tuples.
+        """
+        encoded = []
+        for byte in data:
+            shape_idx = (byte >> 6) & 0b11  # Bits 7-6 for shape
+            move_idx = (byte >> 4) & 0b11   # Bits 5-4 for move
+            shape = list(self.shapes.keys())[shape_idx % len(self.shapes)]
+            move = list(self.moves.keys())[move_idx % len(self.moves)]
+            encoded.append((shape, move))
+        return encoded
+
+    def _encode_audio(self, data):
+        """
+        Encode each bit of data into a high or low pitch.
+        Returns a list of pitch codes.
+        """
+        binary_str = ''.join(format(byte, '08b') for byte in data)
+        return [self.audio_codes['high_pitch'] if bit == '1' else self.audio_codes['low_pitch'] 
+                for bit in binary_str]
+
+    def decode_data(self, video_path, audio_path):
+        """
+        Decode simulated video and audio to reconstruct the original data.
+        Returns the decoded bytes.
+        """
+        visual_data = self._decode_visual(video_path)
+        audio_data = self._decode_audio(audio_path)
+        combined_data = self._combine_data(visual_data, audio_data)
+        return combined_data
+
+    def _decode_visual(self, video_path):
+        """
+        Decode simulated video (shapes and moves) into partial bytes.
+        Returns a list of 4-bit values.
+        """
+        decoded = []
+        for shape, move in self.simulated_video:
+            shape_idx = self.shapes.get(shape, 0)
+            move_idx = self.moves.get(move, 0)
+            partial_byte = (shape_idx << 2) | move_idx  # Shape in bits 3-2, move in bits 1-0
+            decoded.append(partial_byte)
+        return decoded
+
+    def _decode_audio(self, audio_path):
+        """
+        Decode simulated audio (pitches) into full bytes.
+        Returns a list of bytes.
+        """
+        binary_str = ''.join('1' if code == self.audio_codes['high_pitch'] else '0' 
+                             for code in self.simulated_audio)
+        return [int(binary_str[i:i+8], 2) for i in range(0, len(binary_str), 8)]
+
+    def _combine_data(self, visual, audio):
+        """
+        Combine visual (first 4 bits) and audio (last 4 bits) into full bytes.
+        Returns the reconstructed data as bytes.
+        """
+        combined = []
+        for v, a in zip(visual, audio):
+            full_byte = (v << 4) | (a & 0x0F)  # Visual: bits 7-4, Audio: bits 3-0
+            combined.append(full_byte)
+        return bytes(combined)
+
+# Example usage
+if __name__ == "__main__":
+    system = DancingFlubberDataSystem()
+    data_to_send = b"Hello, Flubber!"
+    
+    # Encode the data
+    encoded_video, encoded_audio = system.encode_data(data_to_send, "flubber_dance.mp4", "flubber_music.wav")
+    print(f"Encoded video: {encoded_video}, Encoded audio: {encoded_audio}")
+    
+    # Decode the data
+    received_data = system.decode_data(encoded_video, encoded_audio)
+    print(f"Received data: {received_data}")

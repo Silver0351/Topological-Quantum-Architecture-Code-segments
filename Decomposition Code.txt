@@ -1,0 +1,34 @@
+import numpy as np
+import tensorly as tl
+from tensorly.decomposition import parafac
+
+def decompose_tensor(tensor, rank):
+    """
+    Decompose a tensor into a specified rank using PARAFAC decomposition.
+
+    :param tensor: Input tensor (NumPy array).
+    :param rank: Desired rank for decomposition (number of components).
+    :return: List of factor matrices (NumPy arrays).
+    """
+    if not isinstance(tensor, np.ndarray):
+        raise ValueError("Input tensor must be a NumPy array.")
+    if rank < 1 or not isinstance(rank, int):
+        raise ValueError("Rank must be a positive integer.")
+
+    # Perform PARAFAC decomposition
+    factors = parafac(tensor, rank=rank)
+    
+    # Extract factor matrices from KruskalTensor
+    factor_matrices = [factors.factors[i] for i in range(len(factors.factors))]
+    return factor_matrices
+
+# Example usage
+if __name__ == "__main__":
+    # Create a simple 3D tensor (e.g., representing a 2x2x2 cube)
+    tensor = np.array([[[1, 2], [3, 4]], [[5, 6], [7, 8]]])
+    rank = 2  # Decompose into 2 rank-1 tensors
+    factors = decompose_tensor(tensor, rank)
+    
+    # Print the factor matrices
+    for i, factor in enumerate(factors):
+        print(f"Factor matrix {i}:\n{factor}\n")

@@ -1,0 +1,156 @@
+import tkinter as tk
+from tkinter import ttk, messagebox
+import random  # For simulation purposes; replace with actual logic in a full system
+
+class NuclearSimulatorGUI:
+    def __init__(self, master):
+        """Initialize the GUI for the nuclear reaction simulator."""
+        self.master = master
+        master.title("Nuclear Reaction Simulator")
+        master.geometry("800x600")
+
+        # Create main frame
+        self.main_frame = ttk.Frame(master, padding="3 3 12 12")
+        self.main_frame.grid(column=0, row=0, sticky=(tk.N, tk.W, tk.E, tk.S))
+        master.columnconfigure(0, weight=1)
+        master.rowconfigure(0, weight=1)
+
+        # Tooltip creation function
+        def create_tooltip(widget, text):
+            """Create a tooltip for a given widget with the specified text."""
+            def enter(event):
+                self.tooltip = tk.Toplevel(widget)
+                self.tooltip.wm_overrideredirect(True)
+                x, y = widget.winfo_pointerxy()
+                self.tooltip.wm_geometry(f"+{x+10}+{y+10}")
+                label = ttk.Label(self.tooltip, text=text, background="yellow", relief="solid", borderwidth=1)
+                label.pack(ipadx=1)
+
+            def leave(event):
+                if hasattr(self, "tooltip"):
+                    self.tooltip.destroy()
+
+            widget.bind("<Enter>", enter)
+            widget.bind("<Leave>", leave)
+
+        # Component dictionary with properties
+        self.components = {
+            "Coolant": {
+                "Water": {"thermal_conductivity": 0.6, "cost_factor": 1.0},
+                "Helium": {"thermal_conductivity": 0.15, "cost_factor": 1.5},
+                "Sodium": {"thermal_conductivity": 0.07, "cost_factor": 2.0},
+                "Molten Salt": {"thermal_conductivity": 0.5, "cost_factor": 1.8}
+            },
+            "Fuel": {
+                "Uranium-235": {"energy_density": 80, "stability_factor": 0.9},
+                "Plutonium-239": {"energy_density": 90, "stability_factor": 0.7},
+                "Deuterium-Tritium": {"energy_density": 100, "stability_factor": 0.5},
+                "Thorium-232": {"energy_density": 70, "stability_factor": 0.95}
+            },
+            "Moderator": {
+                "Graphite": {"moderation_factor": 1.0, "cost_factor": 1.2},
+                "Heavy Water": {"moderation_factor": 1.2, "cost_factor": 2.5},
+                "None": {"moderation_factor": 0.0, "cost_factor": 0.0},
+                "Beryllium": {"moderation_factor": 0.8, "cost_factor": 1.5}
+            }
+        }
+
+        self.selected = {}
+        self.option_vars = {}
+
+        # Create component selection widgets
+        for i, (component, options) in enumerate(self.components.items()):
+            self.option_vars[component] = tk.StringVar(value=list(options.keys())[0])
+            label = ttk.Label(self.main_frame, text=f"Select {component}:")
+            label.grid(row=i, column=0, sticky=tk.W)
+            create_tooltip(label, f"Choose the {component.lower()} for the reactor.")
+
+            combo = ttk.Combobox(self.main_frame, textvariable=self.option_vars[component], 
+                               values=list(options.keys()), state="readonly")
+            combo.grid(row=i, column=1, sticky=(tk.W, tk.E))
+            self.selected[component] = combo
+
+        # Simulate button
+        self.simulate_button = ttk.Button(self.main_frame, text="Simulate", command=self.simulate)
+        self.simulate_button.grid(row=len(self.components), column=0, columnspan=2, pady=10)
+        create_tooltip(self.simulate_button, "Run a simulation with the current selections.")
+
+        # Output area with scrollbar
+        self.output_frame = ttk.Frame(self.main_frame)
+        self.output_frame.grid(row=len(self.components) + 1, column=0, columnspan=2, 
+                             sticky=(tk.N, tk.S, tk.E, tk.W))
+
+        self.output = tk.Text(self.output_frame, height=10, width=50)
+        self.output.grid(row=0, column=0, sticky=(tk.N, tk.S, tk.E, tk.W))
+
+        scrollbar = ttk.Scrollbar(self.output_frame, orient="vertical", command=self.output.yview)
+        scrollbar.grid(row=0, column=1, sticky=(tk.N, tk.S))
+        self.output["yscrollcommand"] = scrollbar.set
+
+        # Save button
+        self.save_button = ttk.Button(self.main_frame, text="Save Results", command=self.save_results)
+        self.save_button.grid(row=len(self.components) + 2, column=0, columnspan=2, pady=10)
+
+    def simulate(self):
+        """Run the simulation based on selected components and display results."""
+        coolant = self.option_vars["Coolant"].get()
+        fuel = self.option_vars["Fuel"].get()
+        moderator = self.option_vars["Moderator"].get()
+
+        # Basic compatibility validation
+        if moderator == "None" and fuel in ["Uranium-235", "Plutonium-239"]:
+            messagebox.showwarning("Invalid Selection", 
+                                 "Uranium-235 and Plutonium-239 require a moderator.")
+            return
+
+        # Retrieve component properties
+        coolant_props = self.components["Coolant"][coolant]
+        fuel_props = self.components["Fuel"][fuel]
+        moderator_props = self.components["Moderator"][moderator]
+
+        # Simple physics-based simulation logic
+        # Energy Output: Fuel energy density moderated by coolant and moderator
+        energy_output = (fuel_props["energy_density"] * 
+                        moderator_props["moderation_factor"] * 
+                        coolant_props["thermal_conductivity"])
+        energy_output = round(energy_output * random.uniform(0.9, 1.1), 2)  # Add variability
+
+        # Stability Index: Based on fuel stability and moderator effectiveness
+        stability_index = fuel_props["stability_factor"] * moderator_props["moderation_factor"]
+        stability_index = round(stability_index * random.uniform(0.95, 1.05), 2)
+
+        # Cost Estimate: Sum of component cost factors
+        cost_estimate = (coolant_props["cost_factor"] + 
+                        fuel_props.get("cost_factor", 1.0) + 
+                        moderator_props["cost_factor"]) * 100000
+
+        # Format results
+        result = f"Simulation Results:\n"
+        result += f"- Coolant: {coolant}\n"
+        result += f"- Fuel: {fuel}\n"
+        result += f"- Moderator: {moderator}\n\n"
+        result += f"Energy Output: {energy_output} MW\n"
+        result += f"Stability Index: {stability_index}\n"
+        result += f"Cost Estimate: ${cost_estimate:,}\n"
+
+        # Update output display
+        self.output.delete("1.0", tk.END)
+        self.output.insert(tk.END, result)
+
+    def save_results(self):
+        """Save the current simulation results to a file."""
+        try:
+            result_text = self.output.get("1.0", tk.END).strip()
+            if not result_text:
+                messagebox.showwarning("No Results", "No simulation results to save.")
+                return
+            with open("simulation_results.txt", "w") as file:
+                file.write(result_text)
+            messagebox.showinfo("Save Results", "Results saved to simulation_results.txt")
+        except Exception as e:
+            messagebox.showerror("Error", f"Failed to save results: {str(e)}")
+
+if __name__ == "__main__":
+    root = tk.Tk()
+    simulator = NuclearSimulatorGUI(root)
+    root.mainloop()

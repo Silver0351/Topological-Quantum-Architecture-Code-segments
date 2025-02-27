@@ -1,0 +1,40 @@
+from typing import List
+
+def decode_numbers_to_data(numbers: List[float]) -> str:
+    """
+    Decode a list of numbers into a string representation based on tone parameters.
+
+    Args:
+        numbers (List[float]): A list of numbers where every three elements represent
+                               freq_ratio, phase, and amplitude for a tone.
+
+    Returns:
+        str: The decoded string based on the tone parameters.
+
+    Raises:
+        ValueError: If the number of elements in numbers is not a multiple of 3 or if freq_ratio is zero.
+    """
+    if len(numbers) % 3 != 0:
+        raise ValueError("The number of elements in numbers must be a multiple of 3.")
+
+    data = ""
+    for i in range(0, len(numbers), 3):
+        freq_ratio, phase, amplitude = numbers[i:i+3]
+        
+        if freq_ratio == 0:
+            raise ValueError("freq_ratio cannot be zero.")
+        
+        chunk_length = int(amplitude * 1000 / freq_ratio)
+        decoded_char = chr(65 + (chunk_length % 26))  # Maps to 'A' to 'Z'
+        data += decoded_char
+
+    return data
+
+# Example usage
+if __name__ == "__main__":
+    numbers = [1.0, 0.0, 1.0, 2.0, 0.0, 0.5, 0.5, 0.0, 2.0]
+    try:
+        decoded_data = decode_numbers_to_data(numbers)
+        print(f"Decoded data: {decoded_data}")
+    except ValueError as e:
+        print(f"Error: {e}")

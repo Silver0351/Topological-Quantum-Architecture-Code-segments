@@ -1,0 +1,60 @@
+import threading
+import queue
+
+class Daemon:
+    def __init__(self):
+        self.running = False
+        self.instruction_queue = queue.Queue()
+        self.thread = threading.Thread(target=self._run, daemon=True)
+        self.parameters = {}  # Store parameters set by instructions
+
+    def start(self):
+        """Start the Daemon thread."""
+        if not self.running:
+            self.running = True
+            self.thread.start()
+            print("Daemon started")
+
+    def stop(self):
+        """Stop the Daemon thread."""
+        self.running = False
+        self.thread.join()
+        print("Daemon stopped")
+
+    def _run(self):
+        """Background loop to process instructions."""
+        while self.running:
+            try:
+                instruction, data = self.instruction_queue.get(timeout=1)
+                self.execute_instruction(instruction, data)
+            except queue.Empty:
+                continue
+
+    def execute_instruction(self, instruction, data):
+        """Execute a decoded instruction with associated QR data."""
+        print(f"Executing: {instruction} with data: {data}")
+        if instruction.startswith("SET "):
+            try:
+                parts = instruction[4:].strip().split(maxsplit=1)
+                if len(parts) == 2:
+                    param, value = parts
+                    self.parameters[param] = value
+                    print(f"Set parameter {param} = {value}")
+                else:
+                    print("Invalid SET instruction: missing parameter or value")
+            except Exception as e:
+                print(f"Error in SET instruction: {e}")
+        elif instruction.startswith("RUN "):
+            task = instruction[4:].strip()
+            print(f"Running task {task} with data {data}")
+            # Simulate task execution for demonstration
+            if task == "example_task":
+                print(f"Simulating example_task with data: {data}")
+            else:
+                print(f"Unknown task: {task}")
+        elif instruction != "NOOP":
+            print(f"Unknown instruction: {instruction}")
+
+    def add_instruction(self, instruction, data):
+        """Add an instruction to the queue."""
+        self.instruction_queue.put((instruction, data))

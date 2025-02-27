@@ -1,0 +1,77 @@
+import time
+import numpy as np
+
+def get_stimuli():
+    """
+    Simulate external stimuli by generating random numbers.
+    
+    Returns:
+        list: A list of random floats between 0 and 1 representing stimulus intensity.
+    """
+    num_stimuli = np.random.randint(1, 5)  # Randomly generate 1 to 4 stimuli
+    return [np.random.rand() for _ in range(num_stimuli)]
+
+def stimuli_to_tones(stimuli):
+    """
+    Convert stimuli to tones by mapping intensity to frequency.
+    
+    Parameters:
+        stimuli (list): List of floats representing stimulus intensities.
+    
+    Returns:
+        list: List of frequencies (in Hz) corresponding to stimuli.
+    """
+    # Map stimulus intensity (0 to 1) to frequency (200 Hz to 2000 Hz)
+    return [200 + 1800 * s for s in stimuli]
+
+def map_sound_to_fractal(tone):
+    """
+    Map a tone frequency to a fractal parameter (iteration depth).
+    
+    Parameters:
+        tone (float): Frequency in Hz.
+    
+    Returns:
+        int: Fractal iteration depth (1 to 5).
+    """
+    # Map frequency range (200–2000 Hz) to depth range (1–5)
+    depth = int((tone - 200) / 1800 * 5) + 1
+    return depth
+
+def execute_from_fractal(new_fractal):
+    """
+    Execute an action based on the fractal’s depth.
+    
+    Parameters:
+        new_fractal (int): Fractal iteration depth.
+    
+    Prints a message simulating the action taken.
+    """
+    actions = {
+        1: "Simple action",
+        2: "Moderate action",
+        3: "Complex action",
+        4: "Highly complex action",
+        5: "Extremely complex action"
+    }
+    action = actions.get(new_fractal, "Unknown action")
+    print(f"Executing: {action} (based on fractal depth {new_fractal})")
+
+def reactive_loop():
+    """
+    Continuously process stimuli, convert to tones, map to fractals, and execute actions.
+    """
+    while True:
+        # Get external stimuli or user inputs
+        stimuli = get_stimuli()
+        # Convert stimuli to tones
+        tones = stimuli_to_tones(stimuli)
+        for tone in tones:
+            new_fractal = map_sound_to_fractal(tone)
+            execute_from_fractal(new_fractal)
+        time.sleep(1)  # Pause to simulate real-time processing
+
+# Run the reactive loop
+if __name__ == "__main__":
+    print("Starting reactive loop...")
+    reactive_loop()

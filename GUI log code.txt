@@ -1,0 +1,108 @@
+import time
+from threading import Thread
+from queue import Queue
+from typing import Dict, Optional
+
+# Simulated frame data from the query
+VIDEO_FRAMES = [
+    {"frame": 0, "qr": "Hello", "instruction": "SET MODE ON"},
+    {"frame": 1, "qr": "World", "instruction": "RUN DISPLAY"},
+]
+
+class VideoProcessor:
+    """Handles video frame reading and QR code extraction."""
+    def __init__(self, frames: list, output_queue: Queue):
+        self.frames = frames
+        self.output_queue = output_queue
+
+    def process_frames(self):
+        """Simulates processing video frames and extracting QR codes."""
+        print(f"Processing video with {len(self.frames)} frames")
+        for frame_data in self.frames:
+            frame_num = frame_data["frame"]
+            qr_data = frame_data["qr"]
+            instruction = frame_data["instruction"]
+            print(f"Frame {frame_num}: QR={qr_data}, Instruction={instruction}")
+            # Simulate sending data to the daemon via queue
+            self.output_queue.put((qr_data, instruction))
+        # Signal the daemon that processing is complete
+        self.output_queue.put(None)
+
+class InstructionParser:
+    """Parses QR code instructions into actionable commands."""
+    @staticmethod
+    def parse_instruction(instruction: str) -> tuple[str, Optional[str]]:
+        """Extracts command and parameter from instruction."""
+        parts = instruction.split(maxsplit=2)
+        command = parts[0] + " " + parts[1]  # e.g., "SET MODE" or "RUN DISPLAY"
+        param = parts[2] if len(parts) > 2 else None
+        return command, param
+
+class TaskExecutor:
+    """Executes tasks based on parsed instructions."""
+    def __init__(self):
+        self.parameters: Dict[str, str] = {}  # System state
+
+    def set_parameter(self, param_name: str, value: str, qr_data: str):
+        """Sets a system parameter."""
+        print(f"Executing: SET {param_name} with data: {qr_data}")
+        self.parameters[param_name] = value
+        print(f"Set parameter {param_name} = {value}")
+
+    def run_display(self, qr_data: str):
+        """Runs a display task."""
+        print(f"Executing: RUN DISPLAY with data: {qr_data}")
+        print(f"Running task DISPLAY with data {qr_data}")
+
+    def execute(self, command: str, param: Optional[str], qr_data: str):
+        """Maps instructions to tasks."""
+        if command == "SET MODE":
+            self.set_parameter("MODE", param or "ON", qr_data)
+        elif command == "RUN DISPLAY":
+            self.run_display(qr_data)
+
+class DaemonService:
+    """Background service that processes instructions."""
+    def __init__(self, input_queue: Queue):
+        self.input_queue = input_queue
+        self.executor = TaskExecutor()
+        self.running = False
+
+    def start(self):
+        """Starts the daemon in a separate thread."""
+        self.running = True
+        print("Daemon started")
+        Thread(target=self.run, daemon=True).start()
+
+    def run(self):
+        """Processes instructions from the queue."""
+        while self.running:
+            data = self.input_queue.get()
+            if data is None:  # Stop signal
+                self.running = False
+                break
+            qr_data, instruction = data
+            command, param = InstructionParser.parse_instruction(instruction)
+            self.executor.execute(command, param, qr_data)
+            self.input_queue.task_done()
+            time.sleep(0.1)  # Simulate processing time
+
+def main():
+    """Main function to run the system."""
+    instruction_queue = Queue()
+    
+    # Initialize components
+    video_processor = VideoProcessor(VIDEO_FRAMES, instruction_queue)
+    daemon = DaemonService(instruction_queue)
+    
+    # Start the daemon
+    daemon.start()
+    
+    # Process video frames
+    video_processor.process_frames()
+    
+    # Wait for all tasks to complete
+    instruction_queue.join()
+
+if __name__ == "__main__":
+    main()

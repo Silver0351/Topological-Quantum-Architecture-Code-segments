@@ -1,0 +1,159 @@
+import networkx as nx
+import numpy as np
+from qiskit import QuantumCircuit, QuantumRegister, execute, Aer
+import matplotlib.pyplot as plt
+
+class SpinNetwork:
+    def __init__(self, num_qubits, initial_spin_values=None):
+        """
+        Initialize a spin network with a specified number of qubits.
+
+        :param num_qubits: Number of qubits in the network.
+        :param initial_spin_values: Optional array of initial spin values (1 for |0>, -1 for |1>).
+        """
+        self.num_qubits = num_qubits
+        self.graph = nx.Graph()
+        # Default to spin 1 (|0>) if no initial values provided
+        self.spin_values = initial_spin_values if initial_spin_values is not None else np.ones(num_qubits)
+        # Ensure spin_values length matches num_qubits
+        if len(self.spin_values) != num_qubits:
+            raise ValueError("Length of initial_spin_values must match num_qubits")
+        # Create individual qubit registers for flexibility in growth
+        self.qubits = [QuantumRegister(1, name=f'q{i}') for i in range(num_qubits)]
+        self.circuit = QuantumCircuit(*self.qubits)
+        # Add nodes and initialize quantum state
+        for i in range(num_qubits):
+            self.graph.add_node(i, spin=self.spin_values[i])
+            if self.spin_values[i] == -1:  # Spin -1 corresponds to |1>
+                self.circuit.x(i)
+
+    def add_edge(self, node1, node2):
+        """
+        Add an edge between two nodes, representing potential entanglement or interaction.
+
+        :param node1: First node index.
+        :param node2: Second node index.
+        """
+        self.graph.add_edge(node1, node2)
+
+    def apply_operation(self, operation, nodes):
+        """
+        Apply a quantum operation to specified nodes by adding gates to the circuit.
+
+        :param operation: String specifying the operation ('H' or 'CNOT').
+        :param nodes: List or tuple of node indices the operation applies to.
+        """
+        if operation == 'H':
+            for node in nodes:
+                self.circuit.h(node)
+        elif operation == 'CNOT':
+            control, target = nodes
+            self.circuit.cx(control, target)
+
+    def fractal_structure(self, depth):
+        """
+        Simulate fractal growth by adding new nodes connected to existing ones.
+
+        :param depth: Number of growth iterations.
+        """
+        for _ in range(depth):
+            current_nodes = list(self.graph.nodes)
+            for node in current_nodes:
+                new_node = self.num_qubits
+                # Random initial spin for new node
+                spin = np.random.choice([-1, 1])
+                self.graph.add_node(new_node, spin=spin)
+                self.graph.add_edge(node, new_node)
+                # Extend quantum circuit
+                new_qubit = QuantumRegister(1, name=f'q{new_node}')
+                self.qubits.append(new_qubit)
+                self.circuit.add_register(new_qubit)
+                if spin == -1:
+                    self.circuit.x(new_node)
+                self.num_qubits += 1
+                self.spin_values = np.append(self.spin_values, spin)
+
+    def measure(self, shots=1):
+        """
+        Simulate the circuit with measurements and update spin values based on a sample.
+
+        :param shots: Number of simulation shots (default 1 for a single sample).
+        :return: Measurement outcome as a binary string.
+        """
+        meas_circuit = self.circuit.copy()
+        meas_circuit.measure_all()
+        backend = Aer.get_backend('qasm_simulator')
+        job = execute(meas_circuit, backend, shots=shots)
+        result = job.result()
+        counts = result.get_counts()
+        # Take the first sample
+        sample = list(counts.keys())[0]
+        # Update spin_values: '0' -> 1, '1' -> -1
+        for i in range(self.num_qubits):
+            self.spin_values[i] = 1 if sample[self.num_qubits - 1 - i] == '0' else -1  # Reverse order due to Qiskit convention
+            self.graph.nodes[i]['spin'] = self.spin_values[i]
+        return sample
+
+    def visualize(self):
+        """
+        Visualize the network graph with nodes colored by their spin values.
+        """
+        pos = nx.spring_layout(self.graph)
+        spins = [self.graph.nodes[i]['spin'] for i in range(self.num_qubits)]
+        nx.draw(self.graph, pos, with_labels=True, node_color=spins, cmap=plt.get_cmap('coolwarm'), vmin=-1, vmax=1)
+        plt.show()
+
+    def simulate_quantum_circuit(self):
+        """
+        Simulate the quantum circuit and return the statevector before measurement.
+
+        :return: Statevector of the quantum circuit.
+        """
+        backend = Aer.get_backend('statevector_simulator')
+        job = execute(self.circuit, backend)
+        result = job.result()
+        return result.get_statevector()
+
+class TestFramework:
+    def __init__(self):
+        """Initialize the test framework with no network."""
+        self.spin_network = None
+
+    def setup_network(self, num_qubits, initial_spins=None):
+        """
+        Set up the spin network with specified parameters.
+
+        :param num_qubits: Number of qubits.
+        :param initial_spins: Optional initial spin values.
+        """
+        self.spin_network = SpinNetwork(num_qubits, initial_spins)
+
+    def run_test(self, operations):
+        """
+        Run a test by applying operations, measuring, and visualizing the network.
+
+        :param operations: List of tuples (operation, nodes) to apply.
+        :return: Tuple of statevector and measurement sample.
+        """
+        for op, nodes in operations:
+            self.spin_network.apply_operation(op, nodes)
+        state_vector = self.spin_network.simulate_quantum_circuit()
+        sample = self.spin_network.measure()
+        self.spin_network.visualize()
+        return state_vector, sample
+
+# Example usage
+if __name__ == "__main__":
+    tf = TestFramework()
+    tf.setup_network(num_qubits=3, initial_spins=np.array([1, -1, 1]))
+    operations = [('H', [0]), ('CNOT', [0, 1]), ('H', [2])]
+    state_vector, sample = tf.run_test(operations)
+    print("Initial State Vector:", state_vector)
+    print("Measurement Sample:", sample)
+
+    # Simulate fractal growth
+    tf.spin_network.fractal_structure(depth=1)
+    tf.spin_network.apply_operation('H', [3])  # Apply operation to new qubit
+    state_vector, sample = tf.run_test([])
+    print("After Growth, State Vector:", state_vector)
+    print("Measurement Sample:", sample)

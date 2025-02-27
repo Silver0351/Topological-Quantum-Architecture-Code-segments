@@ -1,0 +1,38 @@
+def chunk_data(data, chunk_size=100):
+    """
+    Split the input data into chunks of a specified size.
+
+    Parameters:
+    - data: The input data (string or list).
+    - chunk_size: The size of each chunk (default 100).
+
+    Returns:
+    - List of chunks.
+    """
+    if isinstance(data, str):
+        data = list(data)  # Convert string to list for uniform handling
+    return [data[i:i + chunk_size] for i in range(0, len(data), chunk_size)]
+
+def encode_data_to_numbers(data, chunk_size=100):
+    """
+    Encode data into a list of numbers based on frequency ratios, phase, and amplitude.
+
+    Parameters:
+    - data: The input data (string or list).
+    - chunk_size: The size of each chunk (default 100).
+
+    Returns:
+    - List of numbers: [freq_ratio, phase, amplitude] for each chunk.
+    """
+    numbers = []
+    for chunk in chunk_data(data, chunk_size):
+        freq_ratio = len(chunk) / 1000.0  # Frequency ratio based on chunk length
+        phase = sum(ord(c) for c in chunk) % 360  # Phase from ASCII sum, modulo 360
+        amplitude = max(0.1, min(10.0, len(chunk)))  # Amplitude clamped between 0.1 and 10.0
+        numbers.extend([freq_ratio, phase, amplitude])
+    return numbers
+
+# Example usage
+data = "example data" * 10  # Simulate a larger dataset
+encoded_numbers = encode_data_to_numbers(data)
+print(encoded_numbers[:9])  # Print first 3 sets for brevity

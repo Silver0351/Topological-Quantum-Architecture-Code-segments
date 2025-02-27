@@ -1,0 +1,94 @@
+import numpy as np
+
+class TopologicalLibrary:
+    def __init__(self):
+        """Initialize the TopologicalLibrary with sound parameters and frequency mappings."""
+        self.fs = 1000  # Sampling rate in Hz
+        self.T = 1      # Duration per character in seconds
+        self.f1_base = 500    # Base frequency for f1 (Hz)
+        self.f2_base = 1000   # Base frequency for f2 (Hz)
+        self.f_step = 50      # Frequency step size (Hz)
+        self.f1_list = [self.f1_base + i * self.f_step for i in range(16)]  # 500 to 1200 Hz
+        self.f2_list = [self.f2_base + j * self.f_step for j in range(16)]  # 1000 to 1750 Hz
+
+    def _get_sound_frequencies(self, char):
+        """Map a character to a unique pair of frequencies based on its ASCII value."""
+        ascii_val = ord(char)
+        i = ascii_val % 16        # Index for f1 (0 to 15)
+        j = ascii_val // 16       # Index for f2 (0 to 15)
+        f1 = self.f1_list[i]      # Frequency f1 from 500 to 1200 Hz
+        f2 = self.f2_list[j]      # Frequency f2 from 1000 to 1750 Hz
+        return f1, f2
+
+    def encode_to_sound(self, message):
+        """Encode a message into a list of sound segments, one per character."""
+        sound_data = []
+        for char in message:
+            sound = self._generate_sound(char)
+            sound_data.append(sound)
+        return sound_data
+
+    def _generate_sound(self, char):
+        """Generate a sound wave for a character using two sine waves at distinct frequencies."""
+        f1, f2 = self._get_sound_frequencies(char)
+        t = np.linspace(0, self.T, int(self.fs * self.T), endpoint=False)
+        sound = np.sin(2 * np.pi * f1 * t) + np.sin(2 * np.pi * f2 * t)
+        return sound / 2  # Normalize amplitude to prevent clipping
+
+    def decode_from_sound(self, sound_data):
+        """Decode a list of sound segments back into a message."""
+        message = ""
+        for sound in sound_data:
+            char = self._match_sound_to_char(sound)
+            if char:
+                message += char
+        return message
+
+    def _match_sound_to_char(self, sound):
+        """Match a sound segment to a character by analyzing its frequency content."""
+        N = len(sound)
+        fft_result = np.fft.fft(sound)
+        freqs = np.fft.fftfreq(N, d=1/self.fs)
+        magnitudes = np.abs(fft_result)
+        positive_freqs = freqs[:N//2]
+        positive_mags = magnitudes[:N//2]
+        
+        # Find the two frequencies with the highest magnitudes
+        sorted_indices = np.argsort(positive_mags)[::-1]
+        top_two_freqs = positive_freqs[sorted_indices[:2]]
+        
+        # Find the character whose (f1, f2) pair is closest to the detected frequencies
+        min_distance = float('inf')
+        best_char = None
+        for ascii_val in range(256):
+            char = chr(ascii_val)
+            f1, f2 = self._get_sound_frequencies(char)
+            dist1 = abs(top_two_freqs[0] - f1) + abs(top_two_freqs[1] - f2)
+            dist2 = abs(top_two_freqs[0] - f2) + abs(top_two_freqs[1] - f1)
+            dist = min(dist1, dist2)
+            if dist < min_distance:
+                min_distance = dist
+                best_char = char
+        return best_char
+
+    def apply_distortion(self, sound_data, distortion_factor):
+        """Apply amplitude distortion to sound data while preserving frequency content."""
+        return [np.clip(s * (1 + distortion_factor * np.random.rand(len(s))), -1, 1) for s in sound_data]
+
+    def fractal_reconstruction(self, partial_data):
+        """Placeholder for reconstructing a message from partial sound data."""
+        return "Partial reconstruction"
+
+# Example usage
+if __name__ == "__main__":
+    library = TopologicalLibrary()
+    message = "HELLO"
+    encoded_sound = library.encode_to_sound(message)
+    distorted_sound = library.apply_distortion(encoded_sound, 0.5)
+    decoded_message = library.decode_from_sound(distorted_sound)
+    print(f"Original Message: {message}")
+    print(f"Decoded Message (with distortion): {decoded_message}")
+    
+    partial_data = encoded_sound[:2]
+    reconstructed = library.fractal_reconstruction(partial_data)
+    print(f"Reconstructed from partial data: {reconstructed}")

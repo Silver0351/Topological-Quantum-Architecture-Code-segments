@@ -1,0 +1,123 @@
+import numpy as np
+from PIL import Image
+import random
+
+# 1. Define the Character Set and Color Palette
+python_symbols = "!\"#$%&'()*+,-./:;<=>?@[\\]^_`{|}~"
+english_letters = "abcdefghijklmnopqrstuvwxyz"
+digits = "0123456789"
+character_set = list(python_symbols + english_letters + digits)
+assert len(character_set) == 78, "Character set must have 78 unique characters"
+
+# Map each character to a unique RGB color (78 distinct colors)
+color_palette = {}
+for idx, char in enumerate(character_set):
+    # Use HSV-like distribution for distinct colors, converted to RGB
+    hue = (idx * 360 / 78) % 360  # Spread hues evenly across 360 degrees
+    r = int(255 * abs(np.cos(np.radians(hue))))
+    g = int(255 * abs(np.cos(np.radians(hue + 120))))
+    b = int(255 * abs(np.cos(np.radians(hue + 240))))
+    color_palette[char] = (r, g, b)
+
+# 2. Fractal Generation Function
+def generate_fractal(width, height, max_iter=100):
+    """
+    Generate a Mandelbrot fractal as a 2D array of iteration counts.
+    
+    Args:
+        width (int): Width of the fractal image in pixels.
+        height (int): Height of the fractal image in pixels.
+        max_iter (int): Maximum iterations for fractal computation.
+    
+    Returns:
+        np.ndarray: 2D array of iteration counts.
+    """
+    fractal = np.zeros((height, width), dtype=int)
+    for i in range(height):
+        for j in range(width):
+            x = (j / width) * 4 - 2  # Map to [-2, 2]
+            y = (i / height) * 4 - 2
+            c = complex(x, y)
+            z = 0
+            for n in range(max_iter):
+                if abs(z) > 2:
+                    fractal[i, j] = n
+                    break
+                z = z**2 + c
+            else:
+                fractal[i, j] = max_iter
+    return fractal
+
+# 3. Data Encoding Function
+def encode_data_into_image(data, width, height, subdivision=1):
+    """
+    Encode data into an image using color coding, with optional pixel subdivision.
+    
+    Args:
+        data (str): Data string to encode.
+        width (int): Base width of the image in pixels.
+        height (int): Base height of the image in pixels.
+        subdivision (int): Number of subpixels per pixel (e.g., 4 means 2x2 subpixels).
+    
+    Returns:
+        Image: PIL Image with encoded data.
+    """
+    total_width = width * subdivision
+    total_height = height * subdivision
+    total_pixels = total_width * total_height
+    
+    if len(data) > total_pixels:
+        raise ValueError(f"Data length ({len(data)}) exceeds image capacity ({total_pixels})")
+    
+    # Create image
+    img = Image.new('RGB', (total_width, total_height))
+    pixels = img.load()
+    
+    # Encode data into subpixels
+    data_idx = 0
+    for i in range(height):
+        for j in range(width):
+            for si in range(subdivision):
+                for sj in range(subdivision):
+                    if data_idx < len(data):
+                        char = data[data_idx]
+                        color = color_palette[char]
+                        pixels[j * subdivision + sj, i * subdivision + si] = color
+                        data_idx += 1
+                    else:
+                        # Fill remaining subpixels with black
+                        pixels[j * subdivision + sj, i * subdivision + si] = (0, 0, 0)
+    
+    return img
+
+# 4. Example Usage and Video Simulation
+if __name__ == "__main__":
+    # Parameters for an 8K image
+    base_width, base_height = 7680, 4320  # 8K resolution
+    subdivision = 2  # 2x2 subpixels per pixel
+    fps = 240
+    file_size_mb = 25  # 25 MB per second
+    
+    # Generate a sample fractal (for reference, not used in encoding)
+    fractal = generate_fractal(base_width, base_height)
+    
+    # Sample data (simulate a large dataset)
+    sample_data = "Hello, World!" * int((base_width * base_height * subdivision**2) / len("Hello, World!"))
+    
+    # Encode data into one frame
+    encoded_frame = encode_data_into_image(sample_data, base_width, base_height, subdivision)
+    
+    # Save the frame (simulating one frame of video)
+    encoded_frame.save('encoded_frame.png')
+    print(f"Frame saved. Pixel count: {base_width * base_height}, Subdivided: {base_width * subdivision * base_height * subdivision}")
+    
+    # Calculate theoretical capacity and compression ratio
+    characters_per_frame = base_width * base_height * subdivision**2
+    characters_per_second = characters_per_frame * fps
+    uncompressed_bytes = characters_per_second
+    compressed_bytes = file_size_mb * 1_048_576
+    compression_ratio = uncompressed_bytes / compressed_bytes
+    
+    print(f"Characters per frame: {characters_per_frame}")
+    print(f"Characters per second: {characters_per_second}")
+    print(f"Compression ratio: {compression_ratio:.2f}:1")

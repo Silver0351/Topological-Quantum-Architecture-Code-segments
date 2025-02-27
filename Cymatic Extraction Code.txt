@@ -1,0 +1,100 @@
+import numpy as np
+
+# Constants
+F_MIN = 1000  # Minimum frequency in Hz
+F_STEP = 10   # Frequency step in Hz per byte value
+NUM_BYTES = 256  # Number of possible byte values (0-255)
+SAMPLE_RATE = 44100  # Audio sample rate in Hz
+TONE_DURATION = 0.1  # Duration of each tone in seconds
+
+def analyze_tone(tone):
+    """
+    Analyzes a tone to extract its dominant frequency using FFT.
+    
+    Args:
+        tone (np.ndarray): Array of audio samples representing a single tone.
+    
+    Returns:
+        float: The dominant frequency in Hz.
+    """
+    N = len(tone)
+    fft_result = np.fft.fft(tone)
+    frequencies = np.fft.fftfreq(N, d=1/SAMPLE_RATE)
+    # Consider only positive frequencies
+    positive_idx = np.where(frequencies > 0)
+    magnitude = np.abs(fft_result[positive_idx])
+    max_idx = np.argmax(magnitude)
+    dominant_freq = frequencies[positive_idx][max_idx]
+    return dominant_freq
+
+def get_byte_from_frequency(freq):
+    """
+    Maps a frequency back to its corresponding byte value.
+    
+    Args:
+        freq (float): The frequency to map.
+    
+    Returns:
+        int: The byte value (0-255).
+    
+    Raises:
+        ValueError: If the frequency is out of the expected range.
+    """
+    byte_value = round((freq - F_MIN) / F_STEP)
+    if byte_value < 0 or byte_value >= NUM_BYTES:
+        raise ValueError(f"Frequency {freq} out of range for byte mapping")
+    return byte_value
+
+def decode_tone_to_byte(tone):
+    """
+    Decodes a single tone into a byte by analyzing its frequency.
+    
+    Args:
+        tone (np.ndarray): Array of audio samples for the tone.
+    
+    Returns:
+        int: The decoded byte value.
+    """
+    freq = analyze_tone(tone)
+    byte_value = get_byte_from_frequency(freq)
+    return byte_value
+
+def decode_audio_to_data(audio):
+    """
+    Decodes a list of tones into the original data as a bytearray.
+    
+    Args:
+        audio (list): List of tone segments (each a np.ndarray).
+    
+    Returns:
+        bytearray: The reconstructed data.
+    """
+    data = bytearray()
+    for tone in audio:
+        byte_value = decode_tone_to_byte(tone)
+        data.append(byte_value)
+    return data
+
+# Optional: Function for testing the decoding process
+def generate_tone_for_byte(byte_value):
+    """
+    Generates a tone for a given byte value (for testing).
+    
+    Args:
+        byte_value (int): The byte value to encode (0-255).
+    
+    Returns:
+        np.ndarray: Array of audio samples representing the tone.
+    """
+    freq = F_MIN + byte_value * F_STEP
+    t = np.linspace(0, TONE_DURATION, int(SAMPLE_RATE * TONE_DURATION), endpoint=False)
+    tone = np.sin(2 * np.pi * freq * t)
+    return tone
+
+if __name__ == "__main__":
+    # Test the decoding with bytes corresponding to 'A', 'B', 'C'
+    bytes_to_encode = [65, 66, 67]  # ASCII for 'A', 'B', 'C'
+    audio = [generate_tone_for_byte(b) for b in bytes_to_encode]
+    decoded_data = decode_audio_to_data(audio)
+    print(decoded_data)  # Expected: bytearray(b'ABC') or bytearray([65, 66, 67])
+    # If text output is desired: print(decoded_data.decode('ascii'))

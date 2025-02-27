@@ -1,0 +1,35 @@
+from typing import List, Union
+
+def encode_instructions(data: str) -> List[Union[float, int]]:
+    """
+    Encode instructions into parameters for a Lissajous curve.
+
+    Args:
+        data (str): The instructions to encode.
+
+    Returns:
+        List[Union[float, int]]: A list containing [freq_ratio, phase, amplitude].
+
+    Raises:
+        ValueError: If the input data is empty.
+    """
+    if not data:
+        raise ValueError("Input data cannot be empty.")
+
+    # Calculate frequency ratio based on the length of the data
+    freq_ratio = len(data) / 1000.0
+
+    # Calculate phase based on the sum of ASCII values of the characters
+    ascii_sum = sum(ord(c) for c in data)
+    phase = ascii_sum % 360  # Phase in degrees
+
+    # Fixed amplitude for simplicity
+    amplitude = 1.0
+
+    return [freq_ratio, phase, amplitude]
+
+# Example usage
+if __name__ == "__main__":
+    instructions = "example instructions"
+    encoded = encode_instructions(instructions)
+    print(f"Encoded parameters: {encoded}")

@@ -1,0 +1,41 @@
+import cv2
+import hashlib
+import numpy as np
+
+class HashCache:
+    def __init__(self, library_video_path):
+        """Initialize the HashCache with a video file path."""
+        self.cache = {}
+        self.video = cv2.VideoCapture(library_video_path)
+        if not self.video.isOpened():
+            raise ValueError(f"Could not open video file: {library_video_path}")
+        self.update_cache()
+
+    def update_cache(self):
+        """Populate the cache by reading and decoding frames from the video."""
+        self.cache.clear()  # Reset cache to ensure consistency with video content
+        while True:
+            ret, frame = self.video.read()
+            if not ret:
+                break
+            # Convert to grayscale for simplicity; adjust based on actual encoding
+            if len(frame.shape) == 3:
+                frame = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
+            data = frame.tobytes()  # Decode frame to raw data as bytes
+            hash_key = hashlib.sha256(data).hexdigest()  # Robust hash of the data
+            self.cache[hash_key] = data
+
+    def get_data(self, query_hash):
+        """Retrieve data from the cache using a hash key."""
+        return self.cache.get(query_hash, None)
+
+    def update_library(self, new_data):
+        """Placeholder to add new data to the video library."""
+        # Note: Fully implementing this requires encoding new_data into a frame
+        # and updating the video file, potentially by rewriting it.
+        pass
+
+    def __del__(self):
+        """Ensure the video file is properly released when the object is destroyed."""
+        if self.video.isOpened():
+            self.video.release()

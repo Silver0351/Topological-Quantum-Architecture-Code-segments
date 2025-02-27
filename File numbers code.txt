@@ -1,0 +1,37 @@
+33import json
+import requests  # For HTTP requests; install with `pip install requests`
+
+def serialize_data(numbers):
+    """
+    Serialize a list of numbers into a JSON string.
+
+    Args:
+        numbers (list): A list of numbers to serialize.
+
+    Returns:
+        str: The JSON string representation of the numbers.
+    """
+    return json.dumps(numbers)
+
+def send_data(numbers, url):
+    """
+    Serialize the numbers and send them to a specified URL via HTTP POST.
+
+    Args:
+        numbers (list): A list of numbers to send.
+        url (str): The URL to send the data to.
+
+    Returns:
+        requests.Response: The response object from the POST request.
+    """
+    json_data = serialize_data(numbers)
+    headers = {'Content-Type': 'application/json'}
+    response = requests.post(url, data=json_data, headers=headers)
+    return response
+
+# Example usage
+if __name__ == "__main__":
+    numbers = [1, 2, 3, 4, 5]
+    url = "https://example.com/api/data"  # Replace with a real URL
+    response = send_data(numbers, url)
+    print(f"Data sent. Response status: {response.status_code}")

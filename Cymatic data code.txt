@@ -1,0 +1,67 @@
+import numpy as np
+
+def generate_fractal_pattern():
+    """
+    Generate a 2D grid of iteration counts for the Mandelbrot set.
+    
+    Returns:
+        np.ndarray: 100x100 array of iteration counts.
+    """
+    max_iter = 100
+    x = np.linspace(-2, 2, 100)
+    y = np.linspace(-2, 2, 100)
+    fractal = np.zeros((100, 100), dtype=int)
+    for i in range(100):
+        for j in range(100):
+            c = complex(x[j], y[i])  # Map grid to complex plane
+            z = 0
+            for n in range(max_iter):
+                if abs(z) > 2:
+                    fractal[i, j] = n
+                    break
+                z = z**2 + c
+            else:
+                fractal[i, j] = max_iter
+    return fractal
+
+def encode_data_into_fractal(data: bytes, fractal: np.ndarray):
+    """
+    Encode binary data into the fractal by modifying iteration counts.
+    
+    Args:
+        data (bytes): Data to encode.
+        fractal (np.ndarray): 2D array of iteration counts.
+    
+    Returns:
+        np.ndarray: Modified fractal with encoded data.
+    """
+    if not isinstance(fractal, np.ndarray) or fractal.ndim != 2:
+        raise ValueError("Fractal must be a 2D numpy array")
+    
+    # Convert data to binary string
+    binary_data = ''.join(format(byte, '08b') for byte in data)
+    idx = 0
+    max_iter = 100  # Consistent with generate_fractal_pattern
+    for i in range(fractal.shape[0]):
+        for j in range(fractal.shape[1]):
+            if idx < len(binary_data):
+                bit = binary_data[idx]
+                count = fractal[i, j]
+                # Modify to make count odd for '1', even for '0'
+                if bit == '1' and count % 2 == 0:
+                    fractal[i, j] = min(count + 1, max_iter)
+                elif bit == '0' and count % 2 == 1:
+                    fractal[i, j] = max(count - 1, 0)
+                idx += 1
+            else:
+                break
+        if idx >= len(binary_data):
+            break
+    return fractal
+
+# Example usage
+if __name__ == "__main__":
+    fractal = generate_fractal_pattern()
+    data = b"Hello, World!"
+    encoded_fractal = encode_data_into_fractal(data, fractal)
+    print("Data encoded into fractal.")

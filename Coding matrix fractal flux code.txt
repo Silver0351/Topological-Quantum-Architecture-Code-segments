@@ -1,0 +1,177 @@
+import numpy as np
+import matplotlib.pyplot as plt
+from mpl_toolkits.mplot3d import Axes3D
+from matplotlib.animation import FuncAnimation
+
+class FractalFluxEnvironment:
+    def __init__(self, resolution=20, dimensions=3):
+        """
+        Initialize the fractal flux environment with a 3D grid and empty flux lines.
+        
+        Args:
+            resolution (int): Size of each dimension of the grid (default: 20).
+            dimensions (int): Number of dimensions (fixed at 3 for this implementation).
+        """
+        self.resolution = resolution
+        self.dimensions = dimensions
+        if dimensions != 3:
+            raise ValueError("Only 3D environments are supported in this implementation.")
+        self.fractal_data = np.zeros((resolution, resolution, resolution), dtype=float)
+        self.flux_lines = []
+
+    def generate_fractal(self):
+        """
+        Generate a simple 3D fractal-like background pattern using a sinusoidal function.
+        """
+        x, y, z = np.indices((self.resolution, self.resolution, self.resolution)) / self.resolution
+        self.fractal_data = np.sin(4 * np.pi * x) * np.sin(4 * np.pi * y) * np.sin(4 * np.pi * z)
+        # Normalize to [0, 1] for visualization
+        self.fractal_data = (self.fractal_data + 1) / 2
+
+    def add_flux_line(self, start, end):
+        """
+        Add a flux line defined by start and end points within the grid.
+        
+        Args:
+            start (tuple): 3D coordinates (x, y, z) of the starting point.
+            end (tuple): 3D coordinates (x, y, z) of the ending point.
+        """
+        if len(start) != 3 or len(end) != 3:
+            raise ValueError("Start and end points must be 3D coordinates.")
+        self.flux_lines.append((start, end))
+
+    def _get_line_voxels(self, start, end, num_points=None):
+        """
+        Compute voxel indices along a straight line from start to end using interpolation.
+        
+        Args:
+            start (tuple): Starting point coordinates.
+            end (tuple): Ending point coordinates.
+            num_points (int, optional): Number of points to sample; defaults to line length.
+        
+        Returns:
+            list: List of unique (x, y, z) voxel indices.
+        """
+        # Estimate number of points based on maximum distance if not provided
+        if num_points is None:
+            dx, dy, dz = [abs(end[i] - start[i]) for i in range(3)]
+            num_points = int(max(dx, dy, dz)) + 1
+        t = np.linspace(0, 1, num_points)
+        line_points = []
+        for ti in t:
+            point = [int(round(start[i] + ti * (end[i] - start[i]))) for i in range(3)]
+            # Ensure points stay within grid bounds
+            point = tuple(max(0, min(self.resolution - 1, p)) for p in point)
+            line_points.append(point)
+        # Remove duplicates while preserving order
+        seen = set()
+        return [p for p in line_points if not (p in seen or seen.add(p))]
+
+    def encode_data(self, data):
+        """
+        Encode data into the fractal by setting voxel values along flux lines.
+        
+        Args:
+            data (array-like): 1D array of values to encode.
+        """
+        data = np.asarray(data)
+        data_idx = 0
+        for start, end in self.flux_lines:
+            line_voxels = self._get_line_voxels(start, end)
+            for voxel in line_voxels:
+                if data_idx < len(data):
+                    self.fractal_data[voxel] = data[data_idx]
+                    data_idx += 1
+                else:
+                    break
+            if data_idx >= len(data):
+                break
+        if data_idx < len(data):
+            print(f"Warning: Only {data_idx} of {len(data)} data points were encoded due to insufficient flux line capacity.")
+
+    def decode_data(self):
+        """
+        Decode data by reading values along the flux lines.
+        
+        Returns:
+            np.ndarray: 1D array of decoded values.
+        """
+        decoded_data = []
+        for start, end in self.flux_lines:
+            line_voxels = self._get_line_voxels(start, end)
+            for voxel in line_voxels:
+                decoded_data.append(self.fractal_data[voxel])
+        return np.array(decoded_data)
+
+    def visualize(self):
+        """
+        Visualize the 3D fractal and flux lines using voxels and lines.
+        """
+        fig = plt.figure(figsize=(10, 10))
+        ax = fig.add_subplot(111, projection='3d')
+        # Plot non-zero or significant fractal data
+        mask = np.abs(self.fractal_data) > 0.1  # Threshold to reduce clutter
+        ax.voxels(mask, facecolors=plt.cm.viridis(self.fractal_data / max(1, np.max(self.fractal_data))), edgecolor='k', alpha=0.5)
+        
+        for start, end in self.flux_lines:
+            ax.plot([start[0], end[0]], [start[1], end[1]], [start[2], end[2]], 'r-', linewidth=2)
+        
+        ax.set_xlabel('X')
+        ax.set_ylabel('Y')
+        ax.set_zlabel('Z')
+        plt.title("Fractal Flux Environment")
+        plt.show()
+
+    def animate_flux(self, frames=50):
+        """
+        Animate the flux lines to show dynamic behavior over time.
+        
+        Args:
+            frames (int): Number of animation frames (default: 50).
+        """
+        fig = plt.figure(figsize=(10, 10))
+        ax = fig.add_subplot(111, projection='3d')
+        mask = np.abs(self.fractal_data) > 0.1
+        ax.voxels(mask, facecolors=plt.cm.viridis(self.fractal_data / max(1, np.max(self.fractal_data))), edgecolor='k', alpha=0.5)
+        
+        lines = [ax.plot([], [], [], 'r-', linewidth=2)[0] for _ in self.flux_lines]
+        ax.set_xlabel('X')
+        ax.set_ylabel('Y')
+        ax.set_zlabel('Z')
+
+        def update(frame):
+            progress = frame / (frames - 1)
+            for line, (start, end) in zip(lines, self.flux_lines):
+                # Simulate flux movement by interpolating points
+                current_end = [start[i] + progress * (end[i] - start[i]) for i in range(3)]
+                line.set_data([start[0], current_end[0]], [start[1], current_end[1]])
+                line.set_3d_properties([start[2], current_end[2]])
+            return lines
+
+        anim = FuncAnimation(fig, update, frames=frames, interval=100, blit=True)
+        plt.title("Fractal Flux Animation")
+        plt.show()
+
+# Example usage
+if __name__ == "__main__":
+    env = FractalFluxEnvironment(resolution=20)
+    env.generate_fractal()
+
+    # Add flux lines
+    env.add_flux_line((0, 0, 0), (19, 19, 19))
+    env.add_flux_line((0, 0, 19), (19, 19, 0))
+
+    # Encode some data
+    data = np.linspace(0, 1, 50)  # Example data array
+    env.encode_data(data)
+
+    # Visualize statically
+    env.visualize()
+
+    # Decode and verify data
+    decoded_data = env.decode_data()
+    print("Original data (first 10):", data[:10])
+    print("Decoded data (first 10):", decoded_data[:10])
+
+    # Animate flux lines
+    env.animate_flux()

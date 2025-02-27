@@ -1,0 +1,87 @@
+import numpy as np
+import tensorly as tl
+import logging
+
+tl.set_backend('numpy')
+
+class TensorDecomposer:
+    """A class for performing CP decomposition and reconstruction of tensors using TensorLy."""
+    
+    def __init__(self, rank, max_iter=1000, tol=1e-6):
+        """
+        Initialize the TensorDecomposer with decomposition parameters.
+
+        Args:
+            rank (int): Number of components for CP decomposition.
+            max_iter (int, optional): Maximum iterations for decomposition. Defaults to 1000.
+            tol (float, optional): Convergence tolerance. Defaults to 1e-6.
+        """
+        if not isinstance(rank, int) or rank < 1:
+            raise ValueError("Rank must be a positive integer.")
+        self.rank = rank
+        self.max_iter = max_iter
+        self.tol = tol
+        self.factors = None
+        self.reconstructed = None
+
+    def decompose(self, tensor):
+        """
+        Decompose a tensor using CP decomposition.
+
+        Args:
+            tensor (np.ndarray): Input tensor to decompose.
+
+        Returns:
+            tuple: (factors, error) where factors are the decomposition components
+                   and error is the normalized reconstruction error.
+                   Returns (None, None) if decomposition fails.
+        """
+        try:
+            # Validate input
+            if not isinstance(tensor, np.ndarray):
+                raise ValueError("Input must be a NumPy array.")
+            if len(tensor.shape) < 2:
+                raise ValueError("Tensor must have at least 2 dimensions.")
+            if max(tensor.shape) < self.rank:
+                raise ValueError(f"Rank ({self.rank}) cannot exceed any tensor dimension.")
+
+            # Perform CP decomposition
+            self.factors = tl.decomposition.parafac(
+                tensor, rank=self.rank, n_iter_max=self.max_iter, tol=self.tol
+            )
+            # Reconstruct tensor
+            self.reconstructed = tl.kruskal_to_tensor(self.factors)
+            # Compute reconstruction error
+            error = np.linalg.norm(tensor - self.reconstructed) / np.linalg.norm(tensor)
+            return self.factors, error
+
+        except Exception as e:
+            logging.error(f"Decomposition failed: {e}")
+            return None, None
+
+    def reconstruct(self):
+        """
+        Reconstruct the tensor from decomposition factors.
+
+        Returns:
+            np.ndarray: Reconstructed tensor if decomposition was performed, else raises an error.
+        """
+        if self.factors is None:
+            raise ValueError("No factors available. Run decompose() first.")
+        return self.reconstructed
+
+# Example usage
+if __name__ == "__main__":
+    # Create a sample tensor
+    tensor = np.random.rand(5, 4, 3)
+    # Initialize decomposer
+    decomposer = TensorDecomposer(rank=2)
+    # Decompose and get factors/error
+    factors, error = decomposer.decompose(tensor)
+    if factors is not None:
+        print(f"Decomposition successful. Reconstruction error: {error:.4f}")
+        # Reconstruct tensor
+        reconstructed = decomposer.reconstruct()
+        print(f"Original shape: {tensor.shape}, Reconstructed shape: {reconstructed.shape}")
+    else:
+        print("Decomposition failed.")

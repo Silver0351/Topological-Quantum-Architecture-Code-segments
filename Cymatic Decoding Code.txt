@@ -1,0 +1,43 @@
+def mandelbrot(c, max_iter=256):
+    """Compute the iteration count for a point in the Mandelbrot set."""
+    z = 0j
+    for i in range(max_iter):
+        if abs(z) > 2:
+            return i
+        z = z * z + c
+    return max_iter
+
+def decode_fractal_to_data(fractal, instructions):
+    """Decode a fractal into data based on navigation instructions."""
+    data = bytearray()
+    for instr in instructions:
+        x, y, zoom = instr
+        if fractal is None:
+            c = complex(x, y)
+            iter_count = mandelbrot(c)
+        else:
+            scaled_x = int(x * zoom * len(fractal[0]))
+            scaled_y = int(y * zoom * len(fractal))
+            if 0 <= scaled_y < len(fractal) and 0 <= scaled_x < len(fractal[0]):
+                iter_count = fractal[scaled_y][scaled_x]
+            else:
+                iter_count = 0
+        byte_value = iter_count % 256
+        data.append(byte_value)
+    return data
+
+# Example usage
+instructions = [
+    (0.0, 0.0, 1.0),
+    (0.1, 0.1, 1.0),
+    (-0.5, 0.5, 1.0)
+]
+data = decode_fractal_to_data(None, instructions)
+print("Decoded data (bytes):", data)
+print("As text (if applicable):", data.decode('utf-8', errors='ignore'))
+
+import numpy as np
+fractal_grid = np.zeros((100, 100), dtype=int)
+fractal_grid[50, 50] = 100
+data_grid = decode_fractal_to_data(fractal_grid, [(0.5, 0.5, 1.0)])
+print("Decoded from grid:", data_grid)

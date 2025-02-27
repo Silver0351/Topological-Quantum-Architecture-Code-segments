@@ -1,0 +1,94 @@
+import numpy as np
+import matplotlib.pyplot as plt
+
+def compute_laplacian(u, dx):
+    """
+    Compute the Laplacian (second spatial derivative) of u using finite differences.
+
+    Parameters:
+    - u: Current state (1D array).
+    - dx: Spatial step size.
+
+    Returns:
+    - Laplacian of u.
+    """
+    laplacian = (np.roll(u, 1) - 2 * u + np.roll(u, -1)) / dx**2
+    return laplacian
+
+def compute_dx(u, dx):
+    """
+    Compute the first spatial derivative du/dx using central differences.
+
+    Parameters:
+    - u: Current state (1D array).
+    - dx: Spatial step size.
+
+    Returns:
+    - du/dx.
+    """
+    du_dx = (np.roll(u, -1) - np.roll(u, 1)) / (2 * dx)
+    return du_dx
+
+def sivashinsky_equation(u, t, L=100, dx=1.0):
+    """
+    Compute the right-hand side of the Sivashinsky equation.
+
+    Parameters:
+    - u: Current state of the system (1D array).
+    - t: Current time (unused here, included for compatibility).
+    - L: Length of the spatial domain.
+    - dx: Spatial step size.
+
+    Returns:
+    - du_dt: Time derivative of u.
+    """
+    laplacian_u = compute_laplacian(u, dx)
+    du_dx = compute_dx(u, dx)
+    laplacian_du_dx = compute_laplacian(du_dx, dx)
+    du_dt = -u - u**3 - 0.006 * laplacian_u + 0.006 * laplacian_du_dx
+    return du_dt
+
+def simulate_sivashinsky(L=100, N=100, T=50, dt=0.1, u0=None):
+    """
+    Simulate the Sivashinsky equation over time.
+
+    Parameters:
+    - L: Length of the spatial domain.
+    - N: Number of spatial grid points.
+    - T: Total simulation time.
+    - dt: Time step size.
+    - u0: Initial condition (1D array of size N, optional).
+
+    Returns:
+    - u_history: Array of shape (num_steps + 1, N) with u at each time step.
+    """
+    x = np.linspace(0, L, N, endpoint=False)
+    dx = x[1] - x[0]
+    if u0 is None:
+        u0 = np.cos(2 * np.pi * x / L)  # Default initial condition
+    u = u0.copy()
+    num_steps = int(T / dt)
+    u_history = [u.copy()]
+
+    for _ in range(num_steps):
+        du_dt = sivashinsky_equation(u, None, L, dx)
+        u += dt * du_dt  # Forward Euler step
+        u_history.append(u.copy())
+
+    return np.array(u_history)
+
+# Example usage and visualization
+L = 100  # Domain length
+N = 100  # Number of grid points
+T = 50   # Total time
+dt = 0.1 # Time step
+u_history = simulate_sivashinsky(L, N, T, dt)
+
+# Plot the final state
+x = np.linspace(0, L, N, endpoint=False)
+plt.plot(x, u_history[-1])
+plt.title("Sivashinsky Equation Simulation (Final State)")
+plt.xlabel("x")
+plt.ylabel("u")
+plt.grid(True)
+plt.show()

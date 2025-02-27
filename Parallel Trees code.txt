@@ -1,0 +1,64 @@
+import networkx as nx
+from multiprocessing import Pool
+
+def generate_spanning_tree(G, probability_sequence):
+    """
+    Generate a minimum spanning tree for an undirected graph G with edge weights
+    set according to the provided probability sequence.
+
+    Parameters:
+    - G: An undirected NetworkX graph (nx.Graph).
+    - probability_sequence: A list of probabilities corresponding to the edges in G.edges().
+
+    Returns:
+    - A NetworkX graph representing the minimum spanning tree.
+
+    Raises:
+    - ValueError: If the probability sequence length doesn't match the number of edges.
+    """
+    if len(probability_sequence) != G.number_of_edges():
+        raise ValueError("Probability sequence length must match the number of edges.")
+    
+    # Set edge weights based on the probability sequence
+    for i, (u, v) in enumerate(G.edges()):
+        G[u][v]['weight'] = probability_sequence[i]
+    
+    # Compute the minimum spanning tree
+    tree = nx.minimum_spanning_tree(G)
+    return tree
+
+def parallel_trees(graph_sequence_pairs):
+    """
+    Generate minimum spanning trees for multiple graphs and probability sequences in parallel.
+
+    Parameters:
+    - graph_sequence_pairs: A list of tuples (G, seq), where G is an undirected graph
+                            and seq is the probability sequence for its edges.
+
+    Returns:
+    - A list of minimum spanning trees corresponding to each input pair.
+    """
+    with Pool() as p:
+        trees = p.starmap(generate_spanning_tree, graph_sequence_pairs)
+    return trees
+
+# Example usage
+if __name__ == "__main__":
+    # Create an example undirected graph
+    G = nx.Graph()
+    G.add_edges_from([(0, 1), (1, 2), (2, 3), (0, 3)])  # A simple cycle with a chord
+    
+    # Probability sequence for the edges
+    seq = [0.1, 0.2, 0.3, 0.4]
+    
+    # Generate spanning tree for a single graph
+    tree = generate_spanning_tree(G, seq)
+    print("Edges in the spanning tree:", tree.edges())
+    
+    # For parallel processing
+    graphs = [G, G]  # Same graph twice
+    sequences = [seq, [0.4, 0.3, 0.2, 0.1]]  # Different sequences
+    pairs = list(zip(graphs, sequences))
+    trees = parallel_trees(pairs)
+    for i, t in enumerate(trees):
+        print(f"Tree {i} edges:", t.edges())

@@ -1,0 +1,127 @@
+import networkx as nx
+import numpy as np
+from qiskit import QuantumCircuit, QuantumRegister, ClassicalRegister, execute, Aer
+from qiskit.visualization import plot_state_city
+import matplotlib.pyplot as plt
+
+class SpinNetwork:
+    def __init__(self, num_qubits):
+        """
+        Initialize a spin network with a specified number of qubits.
+
+        :param num_qubits: Number of qubits in the network.
+        """
+        self.num_qubits = num_qubits
+        self.graph = nx.Graph()
+        for i in range(num_qubits):
+            self.graph.add_node(i)
+        self.qr = QuantumRegister(num_qubits)
+        self.cr = ClassicalRegister(num_qubits)
+        self.circuit = QuantumCircuit(self.qr, self.cr)
+
+    def add_edge(self, node1, node2):
+        """
+        Add an edge between two nodes, representing potential entanglement.
+
+        :param node1: First node index.
+        :param node2: Second node index.
+        """
+        self.graph.add_edge(node1, node2)
+
+    def prepare_ghz_state(self):
+        """
+        Prepare a GHZ state for all qubits in the network.
+        """
+        self.circuit.h(self.qr[0])
+        for i in range(1, self.num_qubits):
+            self.circuit.cx(self.qr[0], self.qr[i])
+
+    def apply_weak_measurement(self, target_node, weak_param=0.1):
+        """
+        Simulate a weak measurement with a small rotation and measurement.
+
+        :param target_node: Qubit index to apply the weak measurement.
+        :param weak_param: Parameter controlling the rotation angle.
+        """
+        self.circuit.ry(weak_param * np.pi, self.qr[target_node])
+        self.circuit.measure(self.qr[target_node], self.cr[target_node])
+
+    def apply_full_measurement(self):
+        """
+        Apply full measurement to all qubits.
+        """
+        self.circuit.measure_all()
+
+    def simulate(self, shots=1000):
+        """
+        Simulate the quantum circuit.
+
+        :param shots: Number of simulation shots.
+        :return: Simulation result object.
+        """
+        backend = Aer.get_backend('qasm_simulator')
+        job = execute(self.circuit, backend, shots=shots)
+        return job.result()
+
+    def get_statevector(self):
+        """
+        Get the statevector of the circuit (without measurements).
+
+        :return: Statevector of the circuit.
+        """
+        state_circuit = QuantumCircuit(self.qr)
+        state_circuit.compose(self.circuit, inplace=True)
+        if self.circuit.cregs:
+            state_circuit.remove_final_measurements()
+        backend = Aer.get_backend('statevector_simulator')
+        job = execute(state_circuit, backend)
+        return job.result().get_statevector()
+
+    def visualize_state(self, state_vector):
+        """
+        Visualize the statevector using a city plot.
+
+        :param state_vector: Statevector to visualize.
+        """
+        plot_state_city(state_vector)
+        plt.show()
+
+    def visualize_network(self):
+        """
+        Visualize the network structure.
+        """
+        pos = nx.spring_layout(self.graph)
+        nx.draw(self.graph, pos, with_labels=True, node_color='lightblue', node_size=500, font_size=16, font_color='black')
+        plt.show()
+
+# Usage Example
+network = SpinNetwork(5)
+
+# Create entanglement structure (edges)
+network.add_edge(0, 1)
+network.add_edge(1, 2)
+network.add_edge(2, 3)
+network.add_edge(3, 4)
+
+# Prepare initial GHZ state
+network.prepare_ghz_state()
+
+# Visualize the network structure
+network.visualize_network()
+
+# Get and visualize the initial statevector
+initial_state = network.get_statevector()
+network.visualize_state(initial_state)
+
+# Apply weak measurement on node 2
+network.apply_weak_measurement(2)
+
+# Simulate the circuit with weak measurement
+result = network.simulate()
+print("Measurement Outcomes after weak measurement:", result.get_counts())
+
+# Apply full measurement on a copy for comparison
+full_measurement_circuit = network.circuit.copy()
+full_measurement_circuit.measure_all()
+full_result = execute(full_measurement_circuit, Aer.get_backend('qasm_simulator'), shots=1000).result()
+print("Full Measurement Outcomes:", full_result.get_counts())

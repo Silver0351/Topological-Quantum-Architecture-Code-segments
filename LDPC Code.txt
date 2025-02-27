@@ -1,0 +1,103 @@
+import numpy as np
+from scipy.linalg import hadamard
+import matplotlib.pyplot as plt
+
+class SpatialLDPC:
+    def __init__(self, size=32, coupling_length=4):
+        """
+        Initialize the SpatialLDPC object.
+
+        Args:
+            size (int): The size of the LDPC code block.
+            coupling_length (int): The spatial coupling window size.
+        """
+        self.size = size
+        self.coupling_length = coupling_length
+        self.parity_check_matrix = self._create_parity_check_matrix()
+
+    def _create_parity_check_matrix(self):
+        """
+        Create a spatially coupled parity-check matrix.
+
+        Returns:
+            np.ndarray: The parity-check matrix.
+        """
+        # Use Hadamard matrix as a base (simplified, not a true LDPC matrix)
+        base_H = hadamard(self.size)
+
+        # Initialize the full parity-check matrix with zeros
+        total_size = self.size * self.coupling_length
+        H = np.zeros((total_size, total_size))
+
+        # Place base matrices along the diagonal for each coupling segment
+        for i in range(self.coupling_length):
+            start_idx = i * self.size
+            end_idx = start_idx + self.size
+            H[start_idx:end_idx, start_idx:end_idx] = base_H
+
+        # Add coupling by overlapping adjacent blocks
+        for i in range(1, self.coupling_length):
+            overlap_size = self.size // 2  # Define overlap size (e.g., half the block)
+            # Couple previous block to current block
+            H[i * self.size - overlap_size:i * self.size, 
+              (i - 1) * self.size:(i - 1) * self.size + overlap_size] = base_H[:overlap_size, :overlap_size]
+            # Couple current block to previous block
+            H[i * self.size:i * self.size + overlap_size, 
+              i * self.size - overlap_size:i * self.size] = base_H[-overlap_size:, -overlap_size:]
+
+        return H
+
+    def apply_awgn(self, data, snr):
+        """
+        Apply Additive White Gaussian Noise (AWGN) to the data.
+
+        Args:
+            data (np.ndarray): The original binary data.
+            snr (float): Signal-to-Noise Ratio in linear scale.
+
+        Returns:
+            np.ndarray: Noisy data.
+        """
+        # Modulate binary data to BPSK (-1 for 0, +1 for 1)
+        modulated_data = 2 * data - 1
+        # Calculate noise power based on SNR
+        noise_power = 1 / (2 * snr)
+        noise = np.random.normal(0, np.sqrt(noise_power), modulated_data.shape)
+        return modulated_data + noise
+
+    def simulate_tunneling(self, data, snr):
+        """
+        Simulate the tunneling effect by applying noise and attempting decoding.
+
+        Args:
+            data (np.ndarray): The original binary data.
+            snr (float): Signal-to-Noise Ratio in linear scale.
+
+        Returns:
+            np.ndarray: Decoded data (simplified decoding).
+        """
+        # Apply noise to simulate channel transmission
+        noisy_data = self.apply_awgn(data, snr)
+        # Simplified decoding: threshold at 0 (placeholder for belief propagation)
+        decoded_data = (noisy_data > 0).astype(int)
+        return decoded_data
+
+    def visualize_lattice(self):
+        """
+        Visualize the parity-check matrix.
+        """
+        plt.imshow(self.parity_check_matrix, cmap='binary')
+        plt.title('Spatially Coupled LDPC Parity-Check Matrix')
+        plt.colorbar()
+        plt.show()
+
+# Example usage
+if __name__ == "__main__":
+    # Initialize the LDPC system
+    spatial_ldpc = SpatialLDPC(size=32, coupling_length=4)
+    # Generate random binary data matching the total size
+    data = np.random.randint(0, 2, spatial_ldpc.size * spatial_ldpc.coupling_length)
+    # Simulate transmission and decoding
+    result = spatial_ldpc.simulate_tunneling(data, snr=10)
+    # Visualize the parity-check matrix
+    spatial_ldpc.visualize_lattice()

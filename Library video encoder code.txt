@@ -1,0 +1,95 @@
+import numpy as np
+import cv2
+import qrcode
+
+def encode_data_to_frame(data, frame_size=(1080, 1920)):
+    """
+    Encodes a segment of library data into a video frame as a QR code.
+    
+    Args:
+        data (str): A segment of library data to encode.
+        frame_size (tuple): The size of the video frame (height, width) in pixels.
+    
+    Returns:
+        np.ndarray: A frame with the QR code embedded, suitable for video encoding.
+    """
+    # Generate QR code
+    qr = qrcode.QRCode(
+        version=1,  # Auto-size based on data
+        error_correction=qrcode.constants.ERROR_CORRECT_L,  # Low error correction for more data capacity
+        box_size=10,  # Size of each QR code module in pixels
+        border=4,  # Border width in modules
+    )
+    qr.add_data(data)
+    qr.make(fit=True)  # Automatically adjust QR code size to fit data
+    
+    # Create QR code image
+    qr_img = qr.make_image(fill_color="black", back_color="white")
+    
+    # Convert QR code image to numpy array (grayscale)
+    qr_array = np.array(qr_img, dtype=np.uint8)
+    
+    # Create a blank RGB frame
+    frame = np.zeros(frame_size + (3,), dtype=np.uint8)
+    
+    # Calculate position to center the QR code
+    qr_height, qr_width = qr_array.shape
+    start_y = (frame_size[0] - qr_height) // 2
+    start_x = (frame_size[1] - qr_width) // 2
+    
+    # Ensure QR code fits within frame boundaries
+    if qr_height > frame_size[0] or qr_width > frame_size[1]:
+        raise ValueError("QR code dimensions exceed frame size. Increase frame_size or reduce data size.")
+    
+    # Embed QR code into all three color channels (white becomes 255, black stays 0)
+    frame[start_y:start_y + qr_height, start_x:start_x + qr_width, 0] = qr_array * 255
+    frame[start_y:start_y + qr_height, start_x:start_x + qr_width, 1] = qr_array * 255
+    frame[start_y:start_y + qr_height, start_x:start_x + qr_width, 2] = qr_array * 255
+    
+    return frame
+
+def create_qr_video(library_data, frames_per_second=1, frame_size=(1080, 1920)):
+    """
+    Creates a video from library data, with each frame containing a QR code of a data segment.
+    
+    Args:
+        library_data (list): List of data segments (strings) to encode into the video.
+        frames_per_second (float): Frame rate of the output video.
+        frame_size (tuple): Size of each frame (height, width) in pixels.
+    
+    Returns:
+        None: Writes the video to 'library_video.mp4'.
+    """
+    frames = []
+    # Generate frames for each data segment
+    for segment in library_data:
+        frame = encode_data_to_frame(segment, frame_size=frame_size)
+        frames.append(frame)
+    
+    # Ensure there’s at least one frame to determine dimensions
+    if not frames:
+        raise ValueError("No frames generated. Provide valid library_data.")
+    
+    # Initialize video writer (note: frame.shape is (height, width, 3), so reverse width and height)
+    out = cv2.VideoWriter(
+        'library_video.mp4',
+        cv2.VideoWriter_fourcc(*'mp4v'),  # MP4 codec
+        frames_per_second,
+        (frame_size[1], frame_size[0])  # Width, height for OpenCV
+    )
+    
+    # Write each frame to the video
+    for frame in frames:
+        out.write(frame)
+    
+    # Release the video writer
+    out.release()
+
+# Example usage
+if __name__ == "__main__":
+    # Sample library data (list of strings)
+    sample_data = [
+        "Book 1: Title=The Great Gatsby, Author=F. Scott Fitzgerald, ISBN=978-0743273565",
+        "Book 2: Title=1984, Author=George Orwell, ISBN=978-0451524935",
+    ]
+    create_qr_video(sample_data, frames_per_second=1)

@@ -1,0 +1,59 @@
+import numpy as np
+from pydub import AudioSegment
+from scipy.signal import find_peaks
+
+class AudioUnpacker:
+    def __init__(self, sample_rate=192000, num_bands=40):
+        """
+        Initialize the AudioUnpacker with sample rate and number of frequency bands.
+
+        :param sample_rate: Sample rate of the audio in Hz (default: 192000 Hz).
+        :param num_bands: Number of frequency bands to divide the spectrum into (default: 40).
+        """
+        self.sample_rate = sample_rate
+        self.num_bands = num_bands
+        # Define frequency bands up to Nyquist frequency (sample_rate / 2)
+        self.band_width = (sample_rate / 2) / num_bands  # e.g., 2400 Hz per band at 192 kHz
+
+    def decode(self, audio_segment: AudioSegment) -> str:
+        """
+        Decode an audio segment into a text instruction.
+
+        :param audio_segment: AudioSegment object to decode.
+        :return: Decoded text instruction or 'NOOP' if no instruction is found.
+        """
+        # Ensure mono audio
+        if audio_segment.channels > 1:
+            audio_segment = audio_segment.set_channels(1)
+
+        # Convert to numpy array
+        samples = np.array(audio_segment.get_array_of_samples(), dtype=np.float32)
+
+        # Normalize to [-1, 1]
+        samples /= audio_segment.max_possible_amplitude
+
+        # Compute FFT
+        spectrum = np.abs(np.fft.rfft(samples))
+        freqs = np.fft.rfftfreq(len(samples), d=1.0 / self.sample_rate)
+
+        # Detect peaks above a threshold
+        peaks, _ = find_peaks(spectrum, height=0.1)  # Adjust threshold as needed
+
+        # Map peaks to frequency bands
+        band_indices = (freqs[peaks] / self.band_width).astype(int)
+
+        # Create a bit vector (1 if tone present, 0 if not)
+        bits = np.zeros(self.num_bands, dtype=int)
+        for idx in band_indices:
+            if idx < self.num_bands:  # Ensure within bounds
+                bits[idx] = 1
+
+        # Pack bits into bytes (assume bits are in groups of 8)
+        # Pad with zeros if necessary
+        num_bytes = (len(bits) + 7) // 8
+        byte_data = np.packbits(bits, bitorder='big')
+
+        # Convert to string, ignoring invalid characters
+        instruction = byte_data.tobytes().decode('utf-8', errors='ignore').strip()
+
+        return instruction if instruction else "NOOP"  # Default to no-op if empty

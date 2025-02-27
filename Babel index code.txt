@@ -1,0 +1,109 @@
+import itertools
+from typing import Dict, List, Set, Tuple
+
+class TermExplorer:
+    def __init__(self, term_database: Dict[str, List[str]]):
+        """
+        Initialize the TermExplorer with a database of terms and their synonyms/related terms.
+
+        :param term_database: A dictionary where keys are terms and values are lists of related terms.
+        """
+        self.terms = term_database
+        self.explored_permutations = set()  # Track explored permutations to avoid redundancy
+        self.max_depth = 10  # Maximum depth for recursive permutation generation
+
+    def generate_permutations(self, start_terms: List[str], depth: int = 0) -> Set[Tuple[str, ...]]:
+        """
+        Generate all possible permutations of terms up to max_depth.
+
+        :param start_terms: List of initial terms to explore.
+        :param depth: Current depth in the permutation tree.
+        :return: Set of tuples representing unique permutations.
+        """
+        if depth >= self.max_depth or not start_terms:
+            return set()
+
+        new_permutations = set()
+        for term in start_terms:
+            related_terms = self.terms.get(term, [])
+            for perm in itertools.permutations(related_terms, 2):  # Generate pairs of related terms
+                if perm not in self.explored_permutations:
+                    new_permutations.add(perm)
+                    self.explored_permutations.add(perm)
+
+        # Recursively explore deeper permutations
+        if depth + 1 < self.max_depth:
+            for perm in list(new_permutations):  # Use list to avoid modifying set during iteration
+                new_permutations.update(self.generate_permutations(list(perm), depth + 1))
+
+        return new_permutations
+
+    def interpolate_terms(self, permutations: Set[Tuple[str, ...]]) -> Dict[Tuple[str, ...], List[str]]:
+        """
+        Interpolate terms by finding common conceptual links between terms in permutations.
+
+        :param permutations: Set of term permutations to interpolate.
+        :return: Dictionary mapping permutations to lists of interpolated terms.
+        """
+        interpolated = {}
+        for perm in permutations:
+            common = set()
+            for term in perm:
+                common.update(self.terms.get(term, []))
+            interpolated[perm] = list(common - set(perm))  # Exclude terms already in the permutation
+        return interpolated
+
+    def prioritize_terms(self, interpolated_terms: Dict[Tuple[str, ...], List[str]]) -> List[Tuple[Tuple[str, ...], List[str]]]:
+        """
+        Prioritize permutations based on the relevance of their interpolated terms.
+
+        :param interpolated_terms: Dictionary of permutations with their interpolated terms.
+        :return: List of tuples (permutation, interpolated terms) sorted by relevance.
+        """
+        def frequency_score(terms: List[str]) -> int:
+            # Dummy scoring: sum of lengths of interpolated terms
+            # In practice, replace with a real metric (e.g., corpus frequency)
+            return sum(len(term) for term in terms)
+
+        return sorted(interpolated_terms.items(), key=lambda x: frequency_score(x[1]), reverse=True)
+
+    def explore_terminology(self, initial_terms: List[str]) -> List[Tuple[Tuple[str, ...], List[str]]]:
+        """
+        Explore terminology by generating permutations, interpolating terms, and prioritizing results.
+
+        :param initial_terms: List of terms to start exploration from.
+        :return: List of tuples containing permutations and their prioritized interpolated terms.
+        """
+        permutations = self.generate_permutations(initial_terms)
+        interpolated = self.interpolate_terms(permutations)
+        return self.prioritize_terms(interpolated)
+
+def add_to_library(term_explorer: TermExplorer, library: Dict[str, List[str]]) -> None:
+    """
+    Expand the library by adding explored terms and their relationships.
+
+    :param term_explorer: Instance of TermExplorer for term exploration.
+    :param library: Dictionary representing the library to expand.
+    """
+    initial_terms = list(library.keys())[:5]  # Use first 5 terms as starting point
+    results = term_explorer.explore_terminology(initial_terms)
+
+    for perm, interpolated in results:
+        for term in perm + tuple(interpolated):
+            if term not in library:
+                library[term] = []
+            # Add interpolated terms only if not already present
+            library[term].extend(t for t in interpolated if t not in library[term])
+
+# Example usage
+if __name__ == "__main__":
+    library = {
+        "ion thruster": ["electric propulsion", "ion drive"],
+        "electric propulsion": ["ion thruster", "plasma engine"],
+    }
+
+    term_explorer = TermExplorer(library)
+    add_to_library(term_explorer, library)
+    print("Updated library:")
+    for term, related in library.items():
+        print(f"{term}: {related}")

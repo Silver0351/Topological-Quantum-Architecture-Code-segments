@@ -1,0 +1,42 @@
+from video_processor import VideoProcessor
+from audio_unpacker import AudioUnpacker
+from daemon import Daemon
+from gui import GUI
+
+def main():
+    # Path to the video file (must be replaced with an actual path during execution)
+    video_path = "sample_video.mp4"
+    
+    # Initialize all system components
+    processor = VideoProcessor(video_path)  # Handles video frame and audio extraction
+    unpacker = AudioUnpacker()              # Decodes instructions from audio segments
+    daemon = Daemon()                       # Manages background execution of instructions
+    gui = GUI(daemon)                       # Provides user interface and interaction with daemon
+    
+    # Log the start of video processing with total frame count
+    gui.log(f"Processing video with {processor.total_frames} frames")
+    
+    # Iterate through each frame of the video
+    for i in range(processor.total_frames):
+        # Extract the current frame and its corresponding audio segment
+        frame, audio_segment = processor.get_frame_and_audio(i)
+        
+        # Check for end of video (e.g., if frame or audio extraction fails)
+        if frame is None or audio_segment is None:
+            gui.log(f"End of video reached at frame {i}")
+            break
+        
+        # Decode QR code from the frame and instruction from the audio
+        qr_data = processor.decode_qr(frame)
+        instruction = unpacker.decode(audio_segment)
+        
+        # Process only if there's QR data or a non-trivial instruction
+        if qr_data or instruction != "NOOP":
+            gui.log(f"Frame {i}: QR={qr_data}, Instruction={instruction}")
+            daemon.add_instruction(instruction, qr_data)
+    
+    # Launch the GUI event loop to keep the application running
+    gui.run()
+
+if __name__ == "__main__":
+    main()

@@ -1,0 +1,68 @@
+import numpy as np
+
+def create_offset_matrix(characters):
+    """
+    Create a 3D offset matrix using a provided character set.
+
+    Args:
+        characters (list): List of characters to populate the matrix.
+
+    Returns:
+        np.ndarray: A 3D array of shape (len(characters), len(characters), len(characters)).
+    """
+    num_chars = len(characters)
+    # Vectorized creation of index arrays
+    i = np.arange(num_chars)[:, None, None]
+    j = np.arange(num_chars)[None, :, None]
+    k = np.arange(num_chars)[None, None, :]
+    # Compute offset indices
+    indices = (i + j + k) % num_chars
+    # Map indices to characters
+    matrix = np.array(characters)[indices]
+    return matrix
+
+def encode_data_with_sound(amplitude, timbre, pulse_times, characters, time_scale=1e9):
+    """
+    Encode data using sound properties to index into a 3D offset matrix.
+
+    Args:
+        amplitude (float): Value (0-1) to select the matrix layer.
+        timbre (float): Value (0-1) to select the matrix partition.
+        pulse_times (list): List of pulse times in nanoseconds.
+        characters (list): Characters used in the matrix.
+        time_scale (float, optional): Scaling factor for pulse times. Defaults to 1e9 (nanoseconds).
+
+    Returns:
+        str: Encoded data string.
+
+    Raises:
+        ValueError: If amplitude or timbre are outside [0, 1], or indices are invalid.
+    """
+    # Validate amplitude and timbre
+    if not 0 <= amplitude <= 1 or not 0 <= timbre <= 1:
+        raise ValueError("Amplitude and timbre must be between 0 and 1.")
+    
+    num_chars = len(characters)
+    offset_matrix = create_offset_matrix(characters)
+    
+    data = []
+    for pulse in pulse_times:
+        # Convert pulse time to index
+        index = int(pulse / time_scale) % num_chars
+        # Map amplitude and timbre to indices
+        layer = int(amplitude * (num_chars - 1))
+        partition = int(timbre * (num_chars - 1))
+        # Validate indices
+        if not (0 <= layer < num_chars and 0 <= partition < num_chars and 0 <= index < num_chars):
+            raise ValueError(f"Invalid indices: layer={layer}, partition={partition}, index={index}")
+        data.append(offset_matrix[layer, partition, index])
+    return ''.join(data)
+
+# Example usage
+if __name__ == "__main__":
+    characters = list('ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789')
+    amplitude = 0.5  # Maps to layer 17 with 36 characters
+    timbre = 0.7     # Maps to partition 24 with 36 characters
+    pulse_times = [1e9 * i for i in range(36)]  # 0 to 35 seconds in nanoseconds
+    encoded_data = encode_data_with_sound(amplitude, timbre, pulse_times, characters)
+    print(f"Encoded data: {encoded_data}")

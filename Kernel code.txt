@@ -1,0 +1,94 @@
+using System;
+using System.Collections.Generic;
+using System.IO;
+using System.Windows.Forms;
+using Newtonsoft.Json;
+
+namespace Kernel
+{
+    class Program
+    {
+        [STAThread]
+        static void Main()
+        {
+            try
+            {
+                // Read initialization data from a JSON file
+                string initialData = File.ReadAllText("init.json");
+                // Unpack and install based on the data, capturing created items
+                var createdItems = UnpackAndInstall(initialData);
+                // Enable visual styles and launch the GUI
+                Application.EnableVisualStyles();
+                Application.Run(new MainForm(createdItems));
+            }
+            catch (Exception ex)
+            {
+                // Display error message if initialization fails
+                MessageBox.Show($"Error: {ex.Message}", "Initialization Failed", 
+                    MessageBoxButtons.OK, MessageBoxIcon.Error);
+            }
+        }
+
+        static List<string> UnpackAndInstall(string data)
+        {
+            // Parse JSON data into structured instructions
+            var instructions = JsonConvert.DeserializeObject<InstallInstructions>(data);
+            List<string> createdItems = new List<string>();
+
+            // Create specified directories
+            foreach (var dir in instructions.Directories)
+            {
+                Directory.CreateDirectory(dir);
+                createdItems.Add($"Directory: {dir}");
+            }
+
+            // Create specified files with their contents
+            foreach (var file in instructions.Files)
+            {
+                File.WriteAllText(file.Key, file.Value);
+                createdItems.Add($"File: {file.Key}");
+            }
+
+            return createdItems;
+        }
+    }
+
+    public class InstallInstructions
+    {
+        public List<string> Directories { get; set; }
+        public Dictionary<string, string> Files { get; set; }
+    }
+
+    public class MainForm : Form
+    {
+        public MainForm(List<string> createdItems)
+        {
+            // Configure the form
+            Text = "Kernel GUI";
+            Size = new System.Drawing.Size(300, 400);
+
+            // Add a header label
+            var headerLabel = new Label 
+            { 
+                Text = "Program Initialized\n\nCreated Items:", 
+                AutoSize = true, 
+                Location = new System.Drawing.Point(10, 10) 
+            };
+            Controls.Add(headerLabel);
+
+            // Dynamically add labels for each created item
+            int y = 30;
+            foreach (var item in createdItems)
+            {
+                var itemLabel = new Label 
+                { 
+                    Text = item, 
+                    AutoSize = true, 
+                    Location = new System.Drawing.Point(10, y) 
+                };
+                Controls.Add(itemLabel);
+                y += 20;
+            }
+        }
+    }
+}

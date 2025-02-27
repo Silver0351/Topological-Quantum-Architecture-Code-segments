@@ -1,0 +1,28 @@
+import importlib
+import subprocess
+import sys
+
+def install_if_missing(package):
+    """Check if a package is installed; if not, install it using pip."""
+    try:
+        importlib.import_module(package)
+    except ImportError:
+        print(f"Installing {package}...")
+        subprocess.check_call([sys.executable, "-m", "pip", "install", package])
+        print(f"{package} installed successfully.")
+
+def install_dependencies():
+    """Install all required dependencies for the system."""
+    dependencies = [
+        "opencv-python",
+        "pyzbar",
+        "pydub",
+        "numpy",
+        "scipy",
+        "tkinter"  # Note: Tkinter is typically bundled with Python
+    ]
+    for dep in dependencies:
+        install_if_missing(dep)
+
+if __name__ == "__main__":
+    install_dependencies()

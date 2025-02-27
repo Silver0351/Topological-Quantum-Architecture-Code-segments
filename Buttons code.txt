@@ -1,0 +1,54 @@
+using System;
+using System.Windows.Forms;
+
+public partial class MainForm : Form
+{
+    private TreeView treeView;
+    private ListView listView;
+
+    public MainForm()
+    {
+        InitializeComponent();
+        SetupUI();
+    }
+
+    void SetupUI()
+    {
+        // Create and configure TreeView
+        treeView = new TreeView { Dock = DockStyle.Left, Width = 200 };
+        treeView.AfterSelect += TreeView_AfterSelect;
+        var functionsNode = treeView.Nodes.Add("Functions");
+        functionsNode.Nodes.Add("Quadratic Equations");
+        functionsNode.Nodes.Add("Fractal Patterns");
+        Controls.Add(treeView);
+
+        // Create and configure ListView
+        listView = new ListView { Dock = DockStyle.Fill, View = View.Details };
+        listView.Columns.Add("Options", 200);
+        Controls.Add(listView);
+    }
+
+    private void TreeView_AfterSelect(object sender, TreeViewEventArgs e)
+    {
+        listView.Items.Clear();
+        if (e.Node.Nodes.Count == 0) // Check if it's a leaf node
+        {
+            switch (e.Node.Text)
+            {
+                case "Quadratic Equations":
+                    listView.Items.Add("Enter coefficients a, b, c");
+                    listView.Items.Add("Calculate roots");
+                    listView.Items.Add("Plot graph");
+                    break;
+                case "Fractal Patterns":
+                    listView.Items.Add("Generate Mandelbrot Set");
+                    listView.Items.Add("Generate Julia Set");
+                    listView.Items.Add("Set fractal parameters");
+                    break;
+                default:
+                    listView.Items.Add("No options available");
+                    break;
+            }
+        }
+    }
+}

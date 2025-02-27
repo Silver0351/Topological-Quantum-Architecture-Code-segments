@@ -1,0 +1,56 @@
+import numpy as np
+
+def chunk_data(data, chunk_size=10):
+    """
+    Split the data into chunks of a specified size.
+
+    :param data: Input data (string or iterable).
+    :param chunk_size: Size of each chunk.
+    :return: List of data chunks.
+    """
+    return [data[i:i+chunk_size] for i in range(0, len(data), chunk_size)]
+
+def encode_data_to_audio(data, chunk_size=10, sample_rate=44100, duration=0.1):
+    """
+    Encode data into an audio signal by generating Lissajous-like tones for each chunk.
+
+    :param data: Input data (string or iterable).
+    :param chunk_size: Size of each data chunk.
+    :param sample_rate: Audio sample rate (samples per second).
+    :param duration: Duration of each tone in seconds.
+    :return: NumPy array of the concatenated audio signal.
+    """
+    chunks = chunk_data(data, chunk_size)
+    audio = []
+    for chunk in chunks:
+        tone = generate_tone_for_chunk(chunk, sample_rate, duration)
+        audio.append(tone)
+    return np.concatenate(audio)
+
+def generate_tone_for_chunk(chunk, sample_rate, duration):
+    """
+    Generate a Lissajous-like tone for a data chunk.
+
+    :param chunk: Data chunk.
+    :param sample_rate: Audio sample rate.
+    :param duration: Tone duration.
+    :return: NumPy array of the audio waveform.
+    """
+    # Compute two frequencies for Lissajous-like effect
+    freq_x = 200 + (sum(ord(c) for c in chunk) % 1000)  # X-frequency from ASCII sum
+    freq_y = 200 + (len(chunk) * 100) % 1000  # Y-frequency from chunk length
+    phase = (sum(ord(c) for c in chunk) / len(chunk)) % 360  # Average ASCII for phase
+    amplitude = 0.5 + (len(chunk) / 20)  # Scale amplitude with chunk size
+
+    # Generate time array
+    t = np.linspace(0, duration, int(sample_rate * duration), endpoint=False)
+    # Sum two sine waves for a simplified Lissajous-like tone
+    waveform = amplitude * (np.sin(2 * np.pi * freq_x * t + np.radians(phase)) +
+                            np.sin(2 * np.pi * freq_y * t + np.radians(phase)))
+    return waveform
+
+# Example usage
+if __name__ == "__main__":
+    data = "example data to encode"
+    audio_signal = encode_data_to_audio(data)
+    print(f"Generated audio signal with shape: {audio_signal.shape}")

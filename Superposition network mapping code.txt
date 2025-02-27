@@ -1,0 +1,56 @@
+import numpy as np
+
+def map_data_to_tiling(data, tiling_shape):
+    """
+    Map a flat list of data to a tiling grid with the specified shape.
+
+    Args:
+        data (list or np.ndarray): A flat sequence of data points to be mapped.
+        tiling_shape (tuple): The shape of the tiling grid (e.g., (rows, cols)).
+
+    Returns:
+        np.ndarray: A new NumPy array with the data reshaped to match tiling_shape.
+
+    Raises:
+        ValueError: If the number of data points doesn’t match the tiling grid size.
+    """
+    total_size = np.prod(tiling_shape)
+    if len(data) != total_size:
+        raise ValueError(f"Data size ({len(data)}) does not match tiling size ({total_size})")
+    
+    # Convert data to a NumPy array and reshape it to the tiling shape
+    mapped_tiling = np.array(data).reshape(tiling_shape)
+    return mapped_tiling
+
+def retrieve_data_from_tiling(tiling, coordinates):
+    """
+    Retrieve data from a tiling structure at the specified coordinates.
+
+    Args:
+        tiling (np.ndarray): The tiling grid containing the mapped data.
+        coordinates (tuple): A tuple of indices (e.g., (row, col)) specifying the position.
+
+    Returns:
+        The value stored at the specified coordinates in the tiling.
+
+    Raises:
+        IndexError: If the coordinates are outside the tiling’s bounds.
+    """
+    try:
+        return tiling[coordinates]
+    except IndexError:
+        raise IndexError(f"Coordinates {coordinates} are out of bounds for tiling shape {tiling.shape}")
+
+# Example usage
+if __name__ == "__main__":
+    # Sample data and tiling shape
+    data = [1, 2, 3, 4, 5, 6, 7, 8, 9]
+    tiling_shape = (3, 3)
+
+    # Map data to tiling
+    tiling = map_data_to_tiling(data, tiling_shape)
+    print("Mapped tiling:\n", tiling)
+
+    # Retrieve data at specific coordinates
+    value = retrieve_data_from_tiling(tiling, (1, 1))
+    print("Value at (1, 1):", value)  # Should print 5

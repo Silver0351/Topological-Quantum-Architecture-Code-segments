@@ -1,0 +1,78 @@
+3import numpy as np
+import tensorly as tl
+from tensorly.decomposition import parafac
+
+# Set TensorLy to use NumPy backend for consistency
+tl.set_backend('numpy')
+
+def create_sample_tensor(shape):
+    """
+    Create a random tensor of specified shape.
+
+    Parameters:
+    - shape: Tuple specifying the tensor dimensions (e.g., (3, 4, 2)).
+
+    Returns:
+    - tensor: A random tensor of the given shape.
+    """
+    return tl.tensor(np.random.rand(*shape))
+
+def decompose_tensor(tensor, rank):
+    """
+    Decompose a tensor into its CP form using PARAFAC.
+
+    Parameters:
+    - tensor: Input tensor to decompose.
+    - rank: Number of components (rank) for decomposition.
+
+    Returns:
+    - factors: List of factor matrices from the decomposition.
+    """
+    factors = parafac(tensor, rank=rank)
+    return factors
+
+def reconstruct_tensor(factors):
+    """
+    Reconstruct the tensor from its CP factors.
+
+    Parameters:
+    - factors: List of factor matrices from CP decomposition.
+
+    Returns:
+    - reconstructed_tensor: The tensor reconstructed from the factors.
+    """
+    return tl.kruskal_to_tensor(factors)
+
+def compute_reconstruction_error(original, reconstructed):
+    """
+    Compute the normalized reconstruction error.
+
+    Parameters:
+    - original: Original tensor.
+    - reconstructed: Reconstructed tensor.
+
+    Returns:
+    - error: Normalized error between original and reconstructed tensors.
+    """
+    return tl.norm(original - reconstructed) / tl.norm(original)
+
+# Example usage
+if __name__ == "__main__":
+    # Define tensor shape and rank
+    tensor_shape = (3, 4, 2)
+    rank = 2
+
+    # Create a sample tensor
+    original_tensor = create_sample_tensor(tensor_shape)
+
+    # Decompose the tensor
+    factors = decompose_tensor(original_tensor, rank)
+
+    # Reconstruct the tensor from its factors
+    reconstructed_tensor = reconstruct_tensor(factors)
+
+    # Compute and print the reconstruction error
+    error = compute_reconstruction_error(original_tensor, reconstructed_tensor)
+    print(f"Original tensor shape: {original_tensor.shape}")
+    print(f"Reconstructed tensor shape: {reconstructed_tensor.shape}")
+    print(f"Reconstruction error: {error:.4f}")

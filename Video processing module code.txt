@@ -1,0 +1,106 @@
+import cv2
+from pyzbar.pyzbar import decode as decode_qr
+from pydub import AudioSegment
+import numpy as np
+import os
+
+class VideoProcessor:
+    def __init__(self, video_path):
+        """
+        Initialize the VideoProcessor with a video file path.
+
+        Args:
+            video_path (str): Path to the video file.
+
+        Raises:
+            IOError: If the video file cannot be opened.
+            ValueError: If the video format is unsupported for audio extraction.
+        """
+        self.video_path = video_path
+        self.video = cv2.VideoCapture(video_path)
+        if not self.video.isOpened():
+            raise IOError(f"Cannot open video file: {video_path}")
+
+        self.fps = self.video.get(cv2.CAP_PROP_FPS)
+        self.total_frames = int(self.video.get(cv2.CAP_PROP_FRAME_COUNT))
+        self.frame_duration_ms = 1000 / self.fps if self.fps > 0 else 0
+
+        # Load audio with format detection
+        self.audio = self._extract_audio()
+
+    def _extract_audio(self):
+        """
+        Extract audio from the video file based on its format.
+
+        Returns:
+            AudioSegment: The extracted audio.
+
+        Raises:
+            ValueError: If the video format is unsupported.
+        """
+        file_ext = os.path.splitext(self.video_path)[1].lower()
+        supported_formats = {
+            '.mp4': 'mp4',
+            '.avi': 'avi',
+            '.mkv': 'mkv'
+        }
+        if file_ext not in supported_formats:
+            raise ValueError(f"Unsupported video format: {file_ext}")
+        return AudioSegment.from_file(self.video_path, format=supported_formats[file_ext])
+
+    def get_frame_and_audio(self, frame_number):
+        """
+        Extract a video frame and its corresponding audio segment.
+
+        Args:
+            frame_number (int): The frame number to extract.
+
+        Returns:
+            tuple: (frame (np.ndarray), audio_segment (AudioSegment)) or (None, None) if invalid.
+        """
+        if frame_number < 0 or frame_number >= self.total_frames:
+            return None, None
+
+        # Extract frame
+        self.video.set(cv2.CAP_PROP_POS_FRAMES, frame_number)
+        ret, frame = self.video.read()
+        if not ret:
+            return None, None
+
+        # Calculate audio segment timestamps
+        start_time_ms = (frame_number / self.fps) * 1000
+        end_time_ms = ((frame_number + 1) / self.fps) * 1000
+        audio_segment = self.audio[start_time_ms:end_time_ms]
+
+        return frame, audio_segment
+
+    def decode_qr(self, frame):
+        """
+        Decode all QR codes from a video frame.
+
+        Args:
+            frame (np.ndarray): The video frame to decode.
+
+        Returns:
+            list: List of decoded QR code data strings (empty if none found).
+        """
+        decoded_objects = decode_qr(frame)
+        return [obj.data.decode('utf-8') for obj in decoded_objects]
+
+    def __enter__(self):
+        """Enter the runtime context for the video processor."""
+        return self
+
+    def __exit__(self, exc_type, exc_value, traceback):
+        """Exit the runtime context and release resources."""
+        self.video.release()
+
+# Example usage
+if __name__ == "__main__":
+    with VideoProcessor('sample_video.mp4') as processor:
+        frame_num = 0
+        frame, audio = processor.get_frame_and_audio(frame_num)
+        if frame is not None:
+            qr_codes = processor.decode_qr(frame)
+            print(f"Frame {frame_num}: QR codes: {qr_codes}")
+            # Audio can be exported or analyzed here

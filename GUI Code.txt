@@ -1,0 +1,80 @@
+import threading
+import queue
+import re
+
+class Daemon:
+    def __init__(self):
+        self.running = threading.Event()  # Thread-safe flag to control the loop
+        self.instruction_queue = queue.Queue()  # Queue for instructions
+        self.parameters = {}  # Dictionary to store parameters
+        self.tasks = {}  # Dictionary to store registered tasks
+
+    def start(self):
+        """Start the Daemon thread."""
+        if not self.running.is_set():
+            self.running.set()
+            self.thread = threading.Thread(target=self._run, daemon=True)
+            self.thread.start()
+            print("Daemon started")
+
+    def stop(self):
+        """Stop the Daemon thread."""
+        self.running.clear()
+        self.thread.join()
+        print("Daemon stopped")
+
+    def _run(self):
+        """Background loop to process instructions."""
+        while self.running.is_set():
+            try:
+                instruction, data = self.instruction_queue.get(timeout=1)
+                self.execute_instruction(instruction, data)
+            except queue.Empty:
+                continue
+
+    def execute_instruction(self, instruction, data):
+        """Execute a decoded instruction with associated QR data."""
+        print(f"Executing: {instruction} with data: {data}")
+        if instruction.startswith("SET "):
+            match = re.match(r"SET (\w+) (.+)", instruction)
+            if match:
+                param, value = match.groups()
+                self.parameters[param] = value
+                print(f"Set parameter {param} = {value}")
+            else:
+                print(f"Invalid SET instruction: {instruction}")
+        elif instruction.startswith("RUN "):
+            task_name = instruction[4:].strip()
+            if task_name in self.tasks:
+                print(f"Running task {task_name} with data {data}")
+                self.tasks[task_name](data)
+            else:
+                print(f"Unknown task: {task_name}")
+        elif instruction != "NOOP":
+            print(f"Unknown instruction: {instruction}")
+
+    def add_instruction(self, instruction, data):
+        """Add an instruction to the queue if the Daemon is running."""
+        if not self.running.is_set():
+            print("Daemon is not running. Instruction not added.")
+            return
+        self.instruction_queue.put((instruction, data))
+
+    def get_parameter(self, param_name):
+        """Retrieve a parameter by name."""
+        return self.parameters.get(param_name, None)
+
+    def register_task(self, task_name, task_function):
+        """Register a task that can be executed via RUN instructions."""
+        self.tasks[task_name] = task_function
+
+# Example usage
+def backup_task(data):
+    print(f"Performing backup with data: {data}")
+
+daemon = Daemon()
+daemon.register_task("backup", backup_task)
+daemon.start()
+daemon.add_instruction("SET volume 50", "QR data 1")
+daemon.add_instruction("RUN backup", "QR data 2")
+daemon.stop()

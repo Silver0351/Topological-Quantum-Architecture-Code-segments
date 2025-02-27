@@ -1,0 +1,208 @@
+import tkinter as tk
+from tkinter import messagebox
+import numpy as np
+
+# Placeholder classes (assume full implementations exist)
+class HashCache:
+    def __init__(self, video_path):
+        self.cache = {}
+        self.video_path = video_path
+
+    def cache_frame(self, frame_data):
+        hash_key = hash(str(frame_data))
+        self.cache[hash_key] = frame_data
+        return hash_key
+
+class MainForm:
+    def __init__(self):
+        self.functions = ["sin", "cos", "tan"]
+
+    def get_functions(self):
+        return self.functions
+
+class TermExplorer:
+    def __init__(self):
+        self.terms = ["a", "b"]
+
+    def expand_terms(self):
+        return [f"{t}{i}" for t in self.terms for i in range(2)]
+
+class AudioUnpacker:
+    def decode(self, audio_file):
+        return "Sample instruction from audio"
+
+class Initializer:
+    def __init__(self, initial_matrix_size=4):
+        self.matrix_size = initial_matrix_size
+        self.fractal_matrix = np.random.randint(0, 2, (initial_matrix_size, initial_matrix_size))
+        self.addons = {}
+
+    def expand_matrix(self):
+        self.matrix_size *= 2
+        self.fractal_matrix = np.random.randint(0, 2, (self.matrix_size, self.matrix_size))
+
+def three_body_dynamics(t, y, G, m1, m2, m3):
+    # Placeholder for three-body dynamics ODE
+    return np.zeros(18)  # Simplified return
+
+from scipy.integrate import solve_ivp
+
+# Virtual Environment Class
+class VirtualEnvironment:
+    def __init__(self, master):
+        self.master = master
+        self.master.title("Virtual Environment Tutorial")
+        self.master.geometry("600x400")
+
+        # Initialize components
+        self.components = {
+            'hash_cache': HashCache('dummy_video.mp4'),
+            'main_form': MainForm(),
+            'term_explorer': TermExplorer(),
+            'audio_unpacker': AudioUnpacker(),
+            'initializer': Initializer(),
+            'three_body': None  # Initialized in demo
+        }
+
+        # Define tutorial steps
+        self.tutorial_steps = [
+            {
+                'title': 'Introduction',
+                'content': 'Welcome! This tutorial explores our computational environment, integrating various components into a cohesive system.',
+                'demo': None
+            },
+            {
+                'title': 'HashCache',
+                'content': 'Manages a cache of video frame data using hashes for quick retrieval.',
+                'demo': self.demo_hash_cache
+            },
+            {
+                'title': 'MainForm',
+                'content': 'A navigation interface for selecting mathematical functions.',
+                'demo': self.demo_main_form
+            },
+            {
+                'title': 'TermExplorer',
+                'content': 'Expands a term database by generating permutations.',
+                'demo': self.demo_term_explorer
+            },
+            {
+                'title': 'AudioUnpacker',
+                'content': 'Decodes instructions from audio segments via frequency analysis.',
+                'demo': self.demo_audio_unpacker
+            },
+            {
+                'title': 'Initializer',
+                'content': 'Manages a fractal matrix, expandable via addons or audio tones.',
+                'demo': self.demo_initializer
+            },
+            {
+                'title': 'Three-Body Dynamics',
+                'content': 'Simulates the three-body problem with numerical integration.',
+                'demo': self.demo_three_body
+            }
+        ]
+        self.current_step = 0
+        self.setup_ui()
+
+    def setup_ui(self):
+        # UI Elements
+        self.title_label = tk.Label(self.master, text="", font=("Arial", 16))
+        self.title_label.pack(pady=10)
+
+        self.content_text = tk.Text(self.master, height=10, width=60)
+        self.content_text.pack(pady=10)
+
+        self.demo_button = tk.Button(self.master, text="Run Demo", command=self.run_demo, state=tk.DISABLED)
+        self.demo_button.pack(pady=5)
+
+        self.nav_frame = tk.Frame(self.master)
+        self.prev_button = tk.Button(self.nav_frame, text="Previous", command=self.prev_step)
+        self.prev_button.pack(side=tk.LEFT, padx=5)
+        self.next_button = tk.Button(self.nav_frame, text="Next", command=self.next_step)
+        self.next_button.pack(side=tk.LEFT, padx=5)
+        self.nav_frame.pack(pady=10)
+
+        self.show_step(0)
+
+    def show_step(self, index):
+        if 0 <= index < len(self.tutorial_steps):
+            step = self.tutorial_steps[index]
+            self.title_label.config(text=step['title'])
+            self.content_text.delete(1.0, tk.END)
+            self.content_text.insert(tk.END, step['content'])
+            self.demo_button.config(state=tk.NORMAL if step['demo'] else tk.DISABLED)
+            self.current_step = index
+
+    def next_step(self):
+        if self.current_step < len(self.tutorial_steps) - 1:
+            self.show_step(self.current_step + 1)
+
+    def prev_step(self):
+        if self.current_step > 0:
+            self.show_step(self.current_step - 1)
+
+    def run_demo(self):
+        demo_func = self.tutorial_steps[self.current_step]['demo']
+        if demo_func:
+            try:
+                demo_func()
+            except Exception as e:
+                messagebox.showerror("Error", f"Demo failed: {e}")
+
+    # Demo Functions
+    def demo_hash_cache(self):
+        data = "Sample frame data"
+        key = self.components['hash_cache'].cache_frame(data)
+        messagebox.showinfo("HashCache Demo", f"Cached data with hash: {key}")
+
+    def demo_main_form(self):
+        functions = self.components['main_form'].get_functions()
+        messagebox.showinfo("MainForm Demo", f"Available functions: {', '.join(functions)}")
+
+    def demo_term_explorer(self):
+        terms = self.components['term_explorer'].expand_terms()
+        messagebox.showinfo("TermExplorer Demo", f"Expanded terms: {', '.join(terms)}")
+
+    def demo_audio_unpacker(self):
+        instruction = self.components['audio_unpacker'].decode('sample.wav')
+        messagebox.showinfo("AudioUnpacker Demo", f"Decoded: {instruction}")
+
+    def demo_initializer(self):
+        init = self.components['initializer']
+        init.expand_matrix()
+        messagebox.showinfo("Initializer Demo", f"New matrix size: {init.matrix_size}")
+
+    def demo_three_body(self):
+        initial_conditions = np.array([1, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 1, -1, 0, 0, 0, -1, 0])
+        sol = solve_ivp(three_body_dynamics, [0, 1], initial_conditions, args=(1, 1, 1, 1), t_eval=np.linspace(0, 1, 100))
+        import matplotlib.pyplot as plt
+        fig = plt.figure()
+        ax = fig.add_subplot(111, projection='3d')
+        ax.plot(sol.y[0], sol.y[1], sol.y[2], label='Body 1')
+        ax.plot(sol.y[6], sol.y[7], sol.y[8], label='Body 2')
+        ax.plot(sol.y[12], sol.y[13], sol.y[14], label='Body 3')
+        ax.legend()
+        plt.show()
+
+# Modified InitializerGUI Class
+class InitializerGUI:
+    def __init__(self, master):
+        self.master = master
+        self.master.title("Computational Environment")
+        self.master.geometry("300x200")
+
+        # Basic GUI elements (simplified)
+        tk.Label(self.master, text="Welcome to the Computational Environment").pack(pady=20)
+        self.launch_button = tk.Button(self.master, text="Launch Virtual Environment", command=self.launch_ve)
+        self.launch_button.pack(pady=10)
+
+    def launch_ve(self):
+        ve_window = tk.Toplevel(self.master)
+        VirtualEnvironment(ve_window)
+
+# Run the application
+if __name__ == "__main__":
+    root = tk.Tk()
+    app = InitializerGUI(root)
+    root.mainloop()

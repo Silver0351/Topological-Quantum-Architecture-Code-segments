@@ -1,0 +1,69 @@
+import numpy as np
+import matplotlib.pyplot as plt
+
+class SchmittTrigger:
+    def __init__(self, upper_threshold, lower_threshold):
+        """
+        Initialize the Schmitt Trigger with upper and lower thresholds.
+
+        Parameters:
+        - upper_threshold: Threshold to switch from low to high state.
+        - lower_threshold: Threshold to switch from high to low state.
+        """
+        self.upper_threshold = upper_threshold
+        self.lower_threshold = lower_threshold
+        self.state = 0  # Initial state (low)
+
+    def process(self, input_signal):
+        """
+        Process a single input value and update the state if necessary.
+
+        Parameters:
+        - input_signal: The current input value.
+
+        Returns:
+        - The current state (0 or 1).
+        """
+        if self.state == 0 and input_signal > self.upper_threshold:
+            self.state = 1
+        elif self.state == 1 and input_signal < self.lower_threshold:
+            self.state = 0
+        return self.state
+
+    def simulate(self, signal):
+        """
+        Simulate the Schmitt Trigger over an entire signal.
+
+        Parameters:
+        - signal: Array of input values.
+
+        Returns:
+        - Array of output states corresponding to each input.
+        """
+        output = []
+        for s in signal:
+            output.append(self.process(s))
+        return np.array(output)
+
+# Example usage
+if __name__ == "__main__":
+    # Generate a noisy sine wave with a time base
+    t = np.linspace(0, 4 * np.pi, 1000)
+    signal = np.sin(t) + np.random.normal(0, 0.1, 1000)
+    
+    # Create Schmitt Trigger instance
+    trigger = SchmittTrigger(upper_threshold=0.5, lower_threshold=-0.5)
+    
+    # Simulate the trigger on the signal
+    clean_signal = trigger.simulate(signal)
+    
+    # Plot the results
+    plt.figure(figsize=(10, 6))
+    plt.plot(t, signal, label='Noisy Input')
+    plt.plot(t, clean_signal, label='Schmitt Trigger Output', linestyle='--')
+    plt.title('Schmitt Trigger Simulation')
+    plt.xlabel('Time')
+    plt.ylabel('Amplitude')
+    plt.legend()
+    plt.grid(True)
+    plt.show()

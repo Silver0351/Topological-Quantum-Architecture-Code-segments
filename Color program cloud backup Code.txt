@@ -1,0 +1,137 @@
+import numpy as np
+import requests  # for cloud logging
+import soundfile as sf  # for audio file handling
+
+class DataSiphoner:
+    def __init__(self):
+        """Initialize the DataSiphoner with an empty data matrix."""
+        self.data_matrix = None
+
+    def compile_data(self, system_data):
+        """
+        Compile system data into a 100x100x3 matrix representing RGB values.
+        
+        Args:
+            system_data (list): List of dictionaries with 'type', 'size', and 'priority' keys.
+        """
+        self.data_matrix = np.zeros((100, 100, 3), dtype=np.float32)
+        total_positions = 100 * 100
+        for idx in range(total_positions):
+            # Cycle through system_data if fewer items than matrix positions
+            item = system_data[idx % len(system_data)]
+            base_color = self._map_to_color(item['type'])  # [r, g, b]
+            saturation = min(item['size'] / 1000000, 1.0)  # Normalize and cap at 1
+            brightness = min(item['priority'] / 10, 1.0)   # Normalize and cap at 1
+            # Scale base color by saturation and brightness
+            pixel_color = [c * saturation * brightness for c in base_color]
+            i = idx // 100
+            j = idx % 100
+            self.data_matrix[i, j] = pixel_color
+
+    def _map_to_color(self, data_type):
+        """
+        Map data type to a base RGB color.
+        
+        Args:
+            data_type (str): Type of data ('text', 'image', etc.).
+        
+        Returns:
+            list: RGB values as [r, g, b], each between 0 and 1.
+        """
+        if data_type == 'text':
+            return [1, 0, 0]  # Red for text
+        elif data_type == 'image':
+            return [0, 0, 1]  # Blue for images
+        else:
+            return [0, 1, 0]  # Green for others
+
+    def upload_log(self, log_data):
+        """
+        Upload log data to a cloud service.
+        
+        Args:
+            log_data (dict): Log data to upload.
+        """
+        url = "http://example.com/upload_log"
+        try:
+            requests.post(url, json=log_data)
+        except requests.RequestException as e:
+            print(f"Log upload failed: {e}")
+
+    def encode_to_audio(self):
+        """
+        Encode the data matrix into an audio file using frequency modulation.
+        """
+        if self.data_matrix is None:
+            raise ValueError("No data to encode")
+        
+        freq_r = 1000  # Hz for red channel
+        freq_g = 2000  # Hz for green channel
+        freq_b = 3000  # Hz for blue channel
+        duration = 0.01  # 10 ms per pixel
+        samplerate = 44100
+        t = np.linspace(0, duration, int(samplerate * duration), endpoint=False)
+        
+        audio_data = []
+        for i in range(100):
+            for j in range(100):
+                pixel = self.data_matrix[i, j]
+                # Sum of sine waves for each channel
+                tone = (pixel[0] * np.sin(2 * np.pi * freq_r * t) +
+                        pixel[1] * np.sin(2 * np.pi * freq_g * t) +
+                        pixel[2] * np.sin(2 * np.pi * freq_b * t))
+                audio_data.extend(tone)
+        
+        sf.write('data_audio.wav', np.array(audio_data), samplerate)
+
+    def decode_from_audio(self, audio_file):
+        """
+        Decode an audio file back into a 100x100x3 data matrix.
+        
+        Args:
+            audio_file (str): Path to the audio file.
+        
+        Returns:
+            np.ndarray: Decoded data matrix.
+        """
+        data, samplerate = sf.read(audio_file)
+        duration = 0.01  # Must match encoding duration
+        num_samples_per_pixel = int(samplerate * duration)
+        decoded_matrix = np.zeros((100, 100, 3), dtype=np.float32)
+        
+        freq_r = 1000  # Hz
+        freq_g = 2000  # Hz
+        freq_b = 3000  # Hz
+        N = num_samples_per_pixel
+        frequencies = np.fft.rfftfreq(N, d=1/samplerate)
+        
+        for i in range(100):
+            for j in range(100):
+                start = (i * 100 + j) * N
+                end = start + N
+                if end > len(data):
+                    break
+                segment = data[start:end]
+                fft_result = np.fft.rfft(segment)
+                # Find frequency bin indices
+                idx_r = np.argmin(np.abs(frequencies - freq_r))
+                idx_g = np.argmin(np.abs(frequencies - freq_g))
+                idx_b = np.argmin(np.abs(frequencies - freq_b))
+                # Estimate amplitudes (normalized)
+                decoded_matrix[i, j] = [
+                    2 * np.abs(fft_result[idx_r]) / N,
+                    2 * np.abs(fft_result[idx_g]) / N,
+                    2 * np.abs(fft_result[idx_b]) / N
+                ]
+        
+        return decoded_matrix
+
+if __name__ == "__main__":
+    siphoner = DataSiphoner()
+    # Generate sufficient system data for a full matrix
+    system_data = [{'type': 'text', 'size': 1000, 'priority': 5}] * (100 * 100)
+    siphoner.compile_data(system_data)
+    siphoner.upload_log({"status": "Data compiled"})
+    siphoner.encode_to_audio()
+    received_data = siphoner.decode_from_audio('data_audio.wav')
+    print("Decoded Data Shape:", received_data.shape)

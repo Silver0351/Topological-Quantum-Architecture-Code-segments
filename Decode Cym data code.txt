@@ -1,0 +1,69 @@
+import numpy as np
+import json
+import matplotlib.pyplot as plt  # For visualization in example
+
+def generate_cymatic_pattern(tone):
+    """
+    Generate a simplified cymatic pattern based on tone parameters.
+    
+    :param tone: Dictionary with 'frequency', 'amplitude', and 'phase'.
+    :return: 2D numpy array representing the pattern.
+    """
+    size = 100
+    x = np.linspace(0, 1, size)
+    y = np.linspace(0, 1, size)
+    X, Y = np.meshgrid(x, y)
+    
+    # Extract tone parameters
+    freq = tone['frequency']
+    amp = tone['amplitude']
+    phase = tone['phase']
+    
+    # Create a 2D sine wave pattern
+    pattern = amp * np.sin(2 * np.pi * freq * X + phase) * np.sin(2 * np.pi * freq * Y + phase)
+    return pattern
+
+def combine_patterns_to_image(patterns):
+    """
+    Combine multiple patterns into a single image by summing them.
+    
+    :param patterns: List of 2D numpy arrays.
+    :return: 2D numpy array representing the combined image.
+    """
+    return np.sum(patterns, axis=0)
+
+def decode_cymatics_to_image(cymatic_data):
+    """
+    Decode cymatic data back into an image.
+    
+    :param cymatic_data: List of JSON strings representing tone parameters.
+    :return: 2D numpy array representing the reconstructed image.
+    """
+    tones = []
+    for data in cymatic_data:
+        try:
+            tone = json.loads(data)
+            tones.append(tone)
+        except json.JSONDecodeError:
+            print(f"Warning: Failed to decode JSON: {data}")
+            continue
+    
+    patterns = [generate_cymatic_pattern(tone) for tone in tones]
+    image = combine_patterns_to_image(patterns)
+    return image
+
+# Example usage
+if __name__ == "__main__":
+    # Simulate cymatic data
+    cymatic_data = [
+        '{"frequency": 1, "amplitude": 1.0, "phase": 0}',
+        '{"frequency": 2, "amplitude": 0.5, "phase": 0.5}',
+        '{"frequency": 3, "amplitude": 0.3, "phase": 1.0}'
+    ]
+    
+    image = decode_cymatics_to_image(cymatic_data)
+    
+    # Visualize the result
+    plt.imshow(image, cmap='gray')
+    plt.title("Reconstructed Image from Cymatic Data")
+    plt.show()

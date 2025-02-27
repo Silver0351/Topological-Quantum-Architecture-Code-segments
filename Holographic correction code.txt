@@ -1,0 +1,52 @@
+import numpy as np
+
+class DataEncoder:
+    def __init__(self):
+        self.data_to_sound = {}
+        self.sound_to_data = {}
+
+    def encode_data(self, data):
+        """
+        Encode numerical data into sine waves.
+
+        Args:
+            data (list or np.ndarray): The data to encode.
+
+        Returns:
+            np.ndarray: An array of sine waves corresponding to the data.
+        """
+        # Convert data to a NumPy array if it's a list
+        if isinstance(data, list):
+            data = np.array(data)
+
+        # Normalize data to create amplitudes, handling edge cases
+        amplitudes = data / np.max(np.abs(data)) if np.max(np.abs(data)) != 0 else data
+
+        # Generate frequencies linearly spaced between 20 Hz and 20 kHz
+        frequencies = np.linspace(20, 20000, len(data))
+
+        # Generate random phases for each sine wave
+        phases = np.random.uniform(0, 2 * np.pi, len(data))
+
+        # Time array for generating sine waves (1 second, 1000 samples)
+        time = np.linspace(0, 1, 1000)
+
+        # Generate sine waves for each data point
+        sine_waves = np.array([amplitudes[i] * np.sin(2 * np.pi * frequencies[i] * time + phases[i])
+                               for i in range(len(data))])
+
+        # Use a tuple of the data for hashability
+        data_hash = tuple(data)
+        self.data_to_sound[data_hash] = sine_waves
+
+        # Map a unique identifier of sine_waves to data for decoding
+        sound_key = (tuple(frequencies), tuple(phases))
+        self.sound_to_data[sound_key] = data
+
+        return sine_waves
+
+# Example usage
+encoder = DataEncoder()
+data = [0.1, 0.5, 0.9]
+sine_waves = encoder.encode_data(data)
+print("Encoded sine waves shape:", sine_waves.shape)

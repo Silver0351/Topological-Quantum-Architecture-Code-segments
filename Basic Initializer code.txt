@@ -1,0 +1,68 @@
+import tkinter as tk
+from tkinter import ttk
+import numpy as np
+from PIL import Image, ImageTk
+
+class InitializerGUI:
+    def __init__(self, master):
+        self.master = master
+        master.title("Matrix Initializer")
+        master.geometry("400x300")
+
+        self.matrix_size = 4  # Starting matrix size
+        self.addons = {}  # Dictionary to track installed addons
+
+        # Matrix Display
+        self.matrix_label = tk.Label(master, text=f"Current Matrix Size: {self.matrix_size}x{self.matrix_size}", font=("Arial", 12))
+        self.matrix_label.pack(pady=10)
+
+        # Fractal Image Display with Error Handling
+        try:
+            self.fractal_image = Image.open("fractal.png").resize((200, 200), Image.Resampling.LANCZOS)
+            self.fractal_photo = ImageTk.PhotoImage(self.fractal_image)
+            self.fractal_display = tk.Label(master, image=self.fractal_photo)
+            self.fractal_display.pack(pady=10)
+        except FileNotFoundError:
+            self.fractal_display = tk.Label(master, text="Fractal image not found", fg="red")
+            self.fractal_display.pack(pady=10)
+            print("Error: 'fractal.png' not found in the working directory.")
+
+        # Expand Matrix Button
+        self.expand_button = tk.Button(master, text="Expand Matrix", command=self.expand_matrix, bg="#4CAF50", fg="white")
+        self.expand_button.pack(pady=10)
+
+        # Addons Section
+        self.addons_frame = ttk.LabelFrame(master, text="Available Addons")
+        self.addons_frame.pack(fill="both", expand=True, padx=10, pady=10)
+
+        self.addon_list = tk.Listbox(self.addons_frame, selectmode=tk.MULTIPLE, height=5)
+        self.addon_list.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
+        self.addon_list.insert(tk.END, "Addon 1: Data Compression")
+        self.addon_list.insert(tk.END, "Addon 2: Enhanced Visualization")
+        self.addon_list.insert(tk.END, "Addon 3: Security Features")
+
+        self.addon_install_button = tk.Button(self.addons_frame, text="Install Selected", command=self.install_addons, bg="#2196F3", fg="white")
+        self.addon_install_button.pack(side=tk.RIGHT, padx=5, pady=5)
+
+    def expand_matrix(self):
+        """Doubles the matrix size and updates the display."""
+        self.matrix_size *= 2
+        self.matrix_label.config(text=f"Current Matrix Size: {self.matrix_size}x{self.matrix_size}")
+        # Placeholder for backend matrix expansion
+        print(f"Matrix expanded to {self.matrix_size}x{self.matrix_size}")
+
+    def install_addons(self):
+        """Installs selected addons and updates the addons dictionary."""
+        selected_indices = self.addon_list.curselection()
+        for index in selected_indices:
+            addon = self.addon_list.get(index)
+            if addon not in self.addons:
+                print(f"Installing {addon}")
+                self.addons[addon] = "Installed"  # Placeholder for actual installation
+            else:
+                print(f"{addon} is already installed.")
+
+if __name__ == "__main__":
+    root = tk.Tk()
+    app = InitializerGUI(root)
+    root.mainloop()

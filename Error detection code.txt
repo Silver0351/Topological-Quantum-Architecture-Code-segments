@@ -1,0 +1,90 @@
+import json
+from hashlib import md5
+from typing import List
+
+def encode_data_to_numbers(data: str) -> List[float]:
+    """
+    Encode a string into a list of numbers using ASCII values.
+
+    Args:
+        data (str): The input string to encode.
+
+    Returns:
+        List[float]: A list of numbers representing the input data.
+    """
+    return [float(ord(c)) for c in data]
+
+def decode_numbers_to_data(numbers: List[float]) -> str:
+    """
+    Decode a list of numbers back into a string using ASCII values.
+
+    Args:
+        numbers (List[float]): A list of numbers to decode.
+
+    Returns:
+        str: The decoded string.
+    """
+    return ''.join(chr(int(n)) for n in numbers)
+
+def encode_with_steganography_and_error_detection(data: str) -> str:
+    """
+    Encode data into a JSON string with steganography and error detection.
+
+    Args:
+        data (str): The input data to encode.
+
+    Returns:
+        str: A JSON string containing the encoded and embedded data.
+    """
+    numbers = encode_data_to_numbers(data)
+    encoded_with_checksum = []
+
+    # Add error detection by grouping into chunks of 3 and appending a checksum
+    for i in range(0, len(numbers), 3):
+        chunk = numbers[i:i+3]
+        checksum = int(md5(json.dumps(chunk).encode()).hexdigest(), 16) % 1000
+        encoded_with_checksum.extend(chunk + [checksum])
+
+    # Steganography: Embed into cover data at every other position
+    cover_data = [0.0] * (len(encoded_with_checksum) * 2)
+    for i, num in enumerate(encoded_with_checksum):
+        cover_data[i * 2] = num
+
+    return json.dumps(cover_data)
+
+def decode_with_error_detection(encoded_data: str) -> str:
+    """
+    Decode data from a JSON string with error detection.
+
+    Args:
+        encoded_data (str): The JSON string containing the encoded data.
+
+    Returns:
+        str: The decoded original data.
+    """
+    cover_data = json.loads(encoded_data)
+    extracted_numbers = [cover_data[i] for i in range(0, len(cover_data), 2)]
+    decoded = []
+
+    # Process each group of 4 numbers (3 data + 1 checksum)
+    for i in range(0, len(extracted_numbers), 4):
+        if i + 3 < len(extracted_numbers):
+            chunk = extracted_numbers[i:i+3]
+            checksum = extracted_numbers[i+3]
+            expected_checksum = int(md5(json.dumps(chunk).encode()).hexdigest(), 16) % 1000
+
+            if checksum == expected_checksum:
+                decoded.extend(chunk)
+            else:
+                print(f"Error detected at index {i}")
+
+    return decode_numbers_to_data(decoded)
+
+# Example usage
+if __name__ == "__main__":
+    original_data = "Hello, World!"
+    encoded = encode_with_steganography_and_error_detection(original_data)
+    decoded = decode_with_error_detection(encoded)
+    print(f"Original: {original_data}")
+    print(f"Encoded: {encoded}")
+    print(f"Decoded: {decoded}")
